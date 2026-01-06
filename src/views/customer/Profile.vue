@@ -215,9 +215,14 @@
           <el-input v-model="addressForm.receiverPhone" placeholder="请输入手机号" />
         </el-form-item>
         <el-form-item label="所在地区">
-          <el-input v-model="addressForm.province" placeholder="省" style="width: 30%; margin-right: 5%" />
-          <el-input v-model="addressForm.city" placeholder="市" style="width: 30%; margin-right: 5%" />
-          <el-input v-model="addressForm.district" placeholder="区" style="width: 30%" />
+          <el-cascader
+            v-model="selectedRegion"
+            :options="regionOptions"
+            :props="{ value: 'name', label: 'name', children: 'children' }"
+            placeholder="请选择省/市/区"
+            style="width: 100%"
+            @change="handleRegionChange"
+          />
         </el-form-item>
         <el-form-item label="详细地址">
           <el-input v-model="addressForm.detailAddress" type="textarea" :rows="3" placeholder="请输入详细地址" />
@@ -255,9 +260,12 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { User, Location, Medal, Ticket, Lock, Iphone, Message, UserFilled } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+
+const router = useRouter()
 
 const activeMenu = ref('info')
 const userInfo = ref<any>({})
@@ -277,6 +285,8 @@ const editForm = reactive({
   email: ''
 })
 
+const selectedRegion = ref<string[]>([])
+
 const addressForm = reactive({
   id: null,
   receiverName: '',
@@ -288,6 +298,83 @@ const addressForm = reactive({
   isDefault: false
 })
 
+// 中国省市区数据
+const regionOptions = ref([
+  {
+    name: '北京市',
+    children: [
+      { name: '北京市', children: [
+        { name: '东城区' }, { name: '西城区' }, { name: '朝阳区' }, { name: '丰台区' },
+        { name: '石景山区' }, { name: '海淀区' }, { name: '门头沟区' }, { name: '房山区' }
+      ]}
+    ]
+  },
+  {
+    name: '上海市',
+    children: [
+      { name: '上海市', children: [
+        { name: '黄浦区' }, { name: '徐汇区' }, { name: '长宁区' }, { name: '静安区' },
+        { name: '普陀区' }, { name: '虹口区' }, { name: '杨浦区' }, { name: '闵行区' }
+      ]}
+    ]
+  },
+  {
+    name: '广东省',
+    children: [
+      { name: '广州市', children: [
+        { name: '天河区' }, { name: '越秀区' }, { name: '海珠区' }, { name: '荔湾区' },
+        { name: '白云区' }, { name: '黄埔区' }, { name: '番禺区' }, { name: '花都区' }
+      ]},
+      { name: '深圳市', children: [
+        { name: '福田区' }, { name: '罗湖区' }, { name: '南山区' }, { name: '宝安区' },
+        { name: '龙岗区' }, { name: '盐田区' }, { name: '龙华区' }, { name: '坪山区' }
+      ]},
+      { name: '东莞市', children: [{ name: '东莞市' }] },
+      { name: '佛山市', children: [{ name: '禅城区' }, { name: '南海区' }, { name: '顺德区' }] }
+    ]
+  },
+  {
+    name: '浙江省',
+    children: [
+      { name: '杭州市', children: [
+        { name: '西湖区' }, { name: '上城区' }, { name: '拱墅区' }, { name: '滨江区' },
+        { name: '萧山区' }, { name: '余杭区' }, { name: '临平区' }
+      ]},
+      { name: '宁波市', children: [{ name: '海曙区' }, { name: '江北区' }, { name: '鄞州区' }] },
+      { name: '温州市', children: [{ name: '鹿城区' }, { name: '龙湾区' }, { name: '瓯海区' }] }
+    ]
+  },
+  {
+    name: '江苏省',
+    children: [
+      { name: '南京市', children: [
+        { name: '玄武区' }, { name: '秦淮区' }, { name: '建邺区' }, { name: '鼓楼区' },
+        { name: '栖霞区' }, { name: '雨花台区' }, { name: '江宁区' }
+      ]},
+      { name: '苏州市', children: [{ name: '姑苏区' }, { name: '吴中区' }, { name: '相城区' }] },
+      { name: '无锡市', children: [{ name: '梁溪区' }, { name: '滨湖区' }, { name: '惠山区' }] }
+    ]
+  },
+  {
+    name: '四川省',
+    children: [
+      { name: '成都市', children: [
+        { name: '锦江区' }, { name: '青羊区' }, { name: '金牛区' }, { name: '武侯区' },
+        { name: '成华区' }, { name: '龙泉驿区' }, { name: '温江区' }
+      ]},
+      { name: '绵阳市', children: [{ name: '涪城区' }, { name: '游仙区' }] }
+    ]
+  }
+])
+
+const handleRegionChange = (value: string[]) => {
+  if (value && value.length === 3) {
+    addressForm.province = value[0]
+    addressForm.city = value[1]
+    addressForm.district = value[2]
+  }
+}
+
 const passwordForm = reactive({
   oldPassword: '',
   newPassword: '',
@@ -295,13 +382,18 @@ const passwordForm = reactive({
 })
 
 const handleMenuSelect = (index: string) => {
+  // 积分和优惠券跳转到专门页面
+  if (index === 'points') {
+    router.push('/customer/points')
+    return
+  } else if (index === 'coupon') {
+    router.push('/customer/coupons')
+    return
+  }
+  
   activeMenu.value = index
   if (index === 'address' && addresses.value.length === 0) {
     loadAddresses()
-  } else if (index === 'points' && pointsLogs.value.length === 0) {
-    loadPoints()
-  } else if (index === 'coupon' && unusedCoupons.value.length === 0) {
-    loadCoupons()
   }
 }
 
@@ -346,6 +438,12 @@ const loadAddresses = async () => {
 const showAddressDialog = (addr?: any) => {
   if (addr) {
     Object.assign(addressForm, addr)
+    // 设置级联选择器的值
+    if (addr.province && addr.city && addr.district) {
+      selectedRegion.value = [addr.province, addr.city, addr.district]
+    } else {
+      selectedRegion.value = []
+    }
   } else {
     Object.assign(addressForm, {
       id: null,
@@ -357,6 +455,7 @@ const showAddressDialog = (addr?: any) => {
       detailAddress: '',
       isDefault: false
     })
+    selectedRegion.value = []
   }
   addressDialogVisible.value = true
 }

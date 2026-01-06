@@ -23,6 +23,14 @@
           <el-icon><ChatDotRound /></el-icon>
           <span>评价管理</span>
         </el-menu-item>
+        <el-menu-item index="/merchant/chat">
+          <el-icon><ChatLineSquare /></el-icon>
+          <span>客服管理</span>
+        </el-menu-item>
+        <el-menu-item index="/merchant/coupons">
+          <el-icon><Ticket /></el-icon>
+          <span>优惠券管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     
@@ -55,7 +63,7 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { DataAnalysis, Goods, ShoppingCart, ChatDotRound, UserFilled, Menu } from '@element-plus/icons-vue'
+import { DataAnalysis, Goods, ShoppingCart, ChatDotRound, ChatLineSquare, Ticket, UserFilled, Menu } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()

@@ -36,14 +36,54 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/customer/Cart.vue')
       },
       {
+        path: 'checkout',
+        name: 'Checkout',
+        component: () => import('@/views/customer/Checkout.vue')
+      },
+      {
+        path: 'favorites',
+        name: 'Favorites',
+        component: () => import('@/views/customer/Favorites.vue')
+      },
+      {
         path: 'orders',
         name: 'Orders',
         component: () => import('@/views/customer/Orders.vue')
       },
       {
+        path: 'order/:id',
+        name: 'OrderDetail',
+        component: () => import('@/views/customer/OrderDetail.vue')
+      },
+      {
+        path: 'payment',
+        name: 'Payment',
+        component: () => import('@/views/customer/Payment.vue')
+      },
+      {
+        path: 'payment/return',
+        name: 'PaymentReturn',
+        component: () => import('@/views/customer/PaymentReturn.vue')
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/customer/Profile.vue')
+      },
+      {
+        path: 'chat/:merchantId?',
+        name: 'CustomerChat',
+        component: () => import('@/views/customer/Chat.vue')
+      },
+      {
+        path: 'points',
+        name: 'PointsCenter',
+        component: () => import('@/views/customer/PointsCenter.vue')
+      },
+      {
+        path: 'coupons',
+        name: 'CouponCenter',
+        component: () => import('@/views/customer/CouponCenter.vue')
       }
     ]
   },
@@ -77,9 +117,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/merchant/Orders.vue')
       },
       {
+        path: 'order/:id',
+        name: 'MerchantOrderDetail',
+        component: () => import('@/views/merchant/OrderDetail.vue')
+      },
+      {
         path: 'reviews',
         name: 'MerchantReviews',
         component: () => import('@/views/merchant/Reviews.vue')
+      },
+      {
+        path: 'chat',
+        name: 'MerchantChat',
+        component: () => import('@/views/merchant/Chat.vue')
+      },
+      {
+        path: 'coupons',
+        name: 'MerchantCoupons',
+        component: () => import('@/views/merchant/CouponManagement.vue')
       }
     ]
   },
@@ -133,7 +188,19 @@ const routes: RouteRecordRaw[] = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    // 如果有保存的位置（例如通过浏览器后退按钮），返回到该位置
+    if (savedPosition) {
+      return savedPosition
+    }
+    // 如果是在同一个路由内导航（例如商品列表页切换分类），保持当前滚动位置
+    if (to.path === from.path) {
+      return false
+    }
+    // 其他情况滚动到顶部
+    return { top: 0 }
+  }
 })
 
 export default router

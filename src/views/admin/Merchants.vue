@@ -168,8 +168,17 @@ const handleAudit = async () => {
         remark: auditForm.remark || undefined
       }
     })
-    ElMessage.success('审核成功')
+    
+    const statusText = auditForm.status === 2 ? '通过' : '拒绝'
+    ElMessage.success(`审核${statusText}成功`)
     auditDialogVisible.value = false
+    
+    // 如果当前筛选的是"待审核"，审核后清空筛选以显示所有商家
+    if (searchForm.status === 1) {
+      ElMessage.info('已清空筛选条件，显示所有商家')
+      searchForm.status = null
+    }
+    
     loadMerchants()
   } catch (error) {
     console.error('审核失败', error)

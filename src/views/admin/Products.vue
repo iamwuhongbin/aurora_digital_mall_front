@@ -153,7 +153,9 @@ const handleAudit = async () => {
         remark: auditForm.remark || undefined
       }
     })
-    ElMessage.success('审核成功')
+    
+    const statusText = auditForm.status === 2 ? '通过' : '拒绝'
+    ElMessage.success(`审核${statusText}成功`)
     auditDialogVisible.value = false
     loadProducts()
   } catch (error) {

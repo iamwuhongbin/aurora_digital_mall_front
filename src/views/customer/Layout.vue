@@ -16,6 +16,7 @@
                 购物车
               </el-badge>
             </el-menu-item>
+            <el-menu-item index="/customer/favorites">收藏</el-menu-item>
             <el-menu-item index="/customer/orders">订单</el-menu-item>
             <el-menu-item index="/customer/profile">个人中心</el-menu-item>
           </el-menu>

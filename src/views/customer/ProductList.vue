@@ -21,35 +21,40 @@
           <div v-for="parent in categoryTree" :key="parent.id" class="category-section">
             <div 
               class="category-item parent-item"
-              :class="{ active: selectedCategoryId === parent.id }"
-              @click="selectCategory(parent.id)"
+              :class="{ active: selectedCategoryId === parent.id, expanded: expandedCategories.includes(parent.id) }"
             >
               <el-icon class="category-icon"><Folder /></el-icon>
-              <span class="category-name">{{ parent.categoryName }}</span>
-              <el-icon v-if="parent.children && parent.children.length > 0" class="arrow-icon">
+              <span class="category-name" @click="selectCategory(parent.id)">{{ parent.categoryName }}</span>
+              <el-icon 
+                v-if="parent.children && parent.children.length > 0" 
+                class="arrow-icon"
+                @click.stop="toggleCategory(parent.id)"
+              >
                 <ArrowRight />
               </el-icon>
             </div>
             
             <!-- 子分类 -->
-            <div v-if="parent.children && parent.children.length > 0" class="children-list">
-              <div 
-                v-for="child in parent.children" 
-                :key="child.id"
-                class="category-item child-item"
-                :class="{ active: selectedCategoryId === child.id }"
-                @click="selectCategory(child.id)"
-              >
-                <span class="category-name">{{ child.categoryName }}</span>
+            <transition name="slide-fade">
+              <div v-if="parent.children && parent.children.length > 0 && expandedCategories.includes(parent.id)" class="children-list">
+                <div 
+                  v-for="child in parent.children" 
+                  :key="child.id"
+                  class="category-item child-item"
+                  :class="{ active: selectedCategoryId === child.id }"
+                  @click="selectCategory(child.id)"
+                >
+                  <span class="category-name">{{ child.categoryName }}</span>
+                </div>
               </div>
-            </div>
+            </transition>
           </div>
         </div>
       </aside>
 
       <!-- 右侧商品区域 -->
       <main class="product-main">
-        <!-- 搜索栏 -->
+        <!-- 搜索栏和排序 -->
         <div class="search-bar">
           <el-input 
             v-model="searchKeyword" 
@@ -62,6 +67,23 @@
             </template>
           </el-input>
           <el-button type="primary" @click="loadProducts">搜索</el-button>
+          
+          <div style="flex: 1"></div>
+          
+          <el-select 
+            v-model="sortBy" 
+            placeholder="排序方式" 
+            style="width: 180px;"
+            @change="loadProducts"
+          >
+            <el-option label="默认排序" value="" />
+            <el-option label="价格从低到高" value="price_asc" />
+            <el-option label="价格从高到低" value="price_desc" />
+            <el-option label="销量从低到高" value="sales_asc" />
+            <el-option label="销量从高到低" value="sales_desc" />
+            <el-option label="评分从低到高" value="rating_asc" />
+            <el-option label="评分从高到低" value="rating_desc" />
+          </el-select>
         </div>
 
         <!-- 商品列表 -->
@@ -72,7 +94,22 @@
                 <img :src="product.mainImage || '/placeholder.png'" class="product-image" />
                 <div class="product-info">
                   <h4 class="product-name">{{ product.productName }}</h4>
-                  <p class="price">¥{{ product.salePrice }}</p>
+                  <div class="product-rating" v-if="product.averageRating && product.ratingCount > 0">
+                    <el-rate 
+                      :model-value="product.averageRating" 
+                      disabled 
+                      show-score
+                      :colors="['#99A9BF', '#F7BA2A', '#FF9900']"
+                      text-color="#ff9900"
+                    />
+                    <span class="rating-count">({{ product.ratingCount }})</span>
+                  </div>
+                  <div class="price-section">
+                    <span class="sale-price">¥{{ product.salePrice }}</span>
+                    <span class="original-price" v-if="product.originalPrice && product.originalPrice > product.salePrice">
+                      ¥{{ product.originalPrice }}
+                    </span>
+                  </div>
                   <div class="product-meta">
                     <span class="sales">已售 {{ product.salesVolume }}</span>
                   </div>
@@ -115,9 +152,11 @@ const categories = ref<any[]>([])
 const categoryTree = ref<any[]>([])
 const searchKeyword = ref('')
 const selectedCategoryId = ref<number | null>(null)
+const sortBy = ref('')
 const currentPage = ref(1)
 const pageSize = ref(12)
 const total = ref(0)
+const expandedCategories = ref<number[]>([])
 
 // 展平分类树为一维数组
 const flattenCategories = (tree: any[]): any[] => {
@@ -168,6 +207,15 @@ const loadCategories = async () => {
   }
 }
 
+const toggleCategory = (categoryId: number) => {
+  const index = expandedCategories.value.indexOf(categoryId)
+  if (index > -1) {
+    expandedCategories.value.splice(index, 1)
+  } else {
+    expandedCategories.value.push(categoryId)
+  }
+}
+
 const selectCategory = (categoryId: number | null) => {
   selectedCategoryId.value = categoryId
   currentPage.value = 1
@@ -192,6 +240,10 @@ const loadProducts = async () => {
       params.categoryId = route.query.categoryId
       selectedCategoryId.value = Number(route.query.categoryId)
     }
+    
+    if (sortBy.value) {
+      params.sortBy = sortBy.value
+    }
 
     const res = await request.get('/product/list', { params })
     products.value = res.data?.list || res.data?.records || []
@@ -211,6 +263,15 @@ const goToDetail = (id: number) => {
 onMounted(async () => {
   await loadCategories()
   await loadProducts()
+  
+  // 如果URL中有分类ID，自动展开对应的父分类
+  if (route.query.categoryId) {
+    const categoryId = Number(route.query.categoryId)
+    const category = categories.value.find(cat => cat.id === categoryId)
+    if (category && category.parentId) {
+      expandedCategories.value.push(category.parentId)
+    }
+  }
 })
 </script>
 
@@ -321,10 +382,48 @@ onMounted(async () => {
 .arrow-icon {
   font-size: 14px;
   color: #909399;
+  transition: transform 0.3s;
+  cursor: pointer;
+}
+
+.arrow-icon:hover {
+  color: #409eff;
+}
+
+.category-item.expanded .arrow-icon {
+  transform: rotate(90deg);
 }
 
 .children-list {
   background: #fafafa;
+  overflow: hidden;
+}
+
+/* 折叠动画 */
+.slide-fade-enter-active {
+  transition: all 0.3s ease;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-fade-enter-from {
+  transform: translateY(-10px);
+  opacity: 0;
+  max-height: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
+  max-height: 0;
+}
+
+.slide-fade-enter-to,
+.slide-fade-leave-from {
+  max-height: 500px;
+  opacity: 1;
 }
 
 /* 右侧商品区域 */
@@ -386,11 +485,35 @@ onMounted(async () => {
   -webkit-box-orient: vertical;
 }
 
-.price {
+.price-section {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sale-price {
   color: #f56c6c;
   font-size: 22px;
   font-weight: bold;
-  margin: 10px 0;
+}
+
+.original-price {
+  color: #909399;
+  font-size: 14px;
+  text-decoration: line-through;
+}
+
+.product-rating {
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.rating-count {
+  margin-left: 8px;
+  color: #999;
+  font-size: 14px;
 }
 
 .product-meta {
