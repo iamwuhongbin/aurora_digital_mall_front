@@ -196,6 +196,7 @@
         <el-button v-if="order.orderStatus === 1" type="primary" @click="payOrder">去支付</el-button>
         <el-button v-if="order.orderStatus === 3" type="primary" @click="confirmReceive">确认收货</el-button>
         <el-button v-if="order.orderStatus === 4" type="primary" @click="showReviewDialog">评价订单</el-button>
+        <el-button v-if="[2, 3, 4].includes(order.orderStatus)" type="warning" @click="applyRefund">申请退款</el-button>
       </div>
     </div>
     
@@ -444,6 +445,10 @@ const confirmReceive = async () => {
       ElMessage.error('确认收货失败')
     }
   }
+}
+
+const applyRefund = () => {
+  router.push(`/customer/refund/apply?orderId=${order.value.id}`)
 }
 
 const showReviewDialog = () => {

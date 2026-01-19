@@ -84,6 +84,21 @@ const routes: RouteRecordRaw[] = [
         path: 'coupons',
         name: 'CouponCenter',
         component: () => import('@/views/customer/CouponCenter.vue')
+      },
+      {
+        path: 'refund/apply',
+        name: 'ApplyRefund',
+        component: () => import('@/views/customer/ApplyRefund.vue')
+      },
+      {
+        path: 'refunds',
+        name: 'CustomerRefundList',
+        component: () => import('@/views/customer/RefundList.vue')
+      },
+      {
+        path: 'refund/:id',
+        name: 'CustomerRefundDetail',
+        component: () => import('@/views/customer/RefundDetail.vue')
       }
     ]
   },
@@ -135,6 +150,21 @@ const routes: RouteRecordRaw[] = [
         path: 'coupons',
         name: 'MerchantCoupons',
         component: () => import('@/views/merchant/CouponManagement.vue')
+      },
+      {
+        path: 'refunds',
+        name: 'MerchantRefundList',
+        component: () => import('@/views/merchant/RefundList.vue')
+      },
+      {
+        path: 'refund/:id',
+        name: 'MerchantRefundDetail',
+        component: () => import('@/views/merchant/RefundDetail.vue')
+      },
+      {
+        path: 'profile',
+        name: 'MerchantProfile',
+        component: () => import('@/views/merchant/Profile.vue')
       }
     ]
   },
@@ -163,9 +193,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/admin/Products.vue')
       },
       {
+        path: 'product-management',
+        name: 'AdminProductManagement',
+        component: () => import('@/views/admin/ProductManagement.vue')
+      },
+      {
+        path: 'banners',
+        name: 'AdminBanners',
+        component: () => import('@/views/admin/BannerManagement.vue')
+      },
+      {
         path: 'customers',
         name: 'AdminCustomers',
         component: () => import('@/views/admin/Customers.vue')
+      },
+      {
+        path: 'profile',
+        name: 'AdminProfile',
+        component: () => import('@/views/admin/Profile.vue')
       }
     ]
   },

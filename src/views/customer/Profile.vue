@@ -6,7 +6,21 @@
         <!-- 用户信息卡片 -->
         <el-card class="user-card">
           <div class="user-avatar">
-            <el-avatar :size="80" :icon="UserFilled" />
+            <el-upload
+              class="avatar-uploader"
+              :action="uploadUrl"
+              :headers="uploadHeaders"
+              :show-file-list="false"
+              :on-success="handleAvatarSuccess"
+              :before-upload="beforeAvatarUpload"
+            >
+              <el-avatar v-if="userInfo.avatar" :size="80" :src="getAvatarUrl(userInfo.avatar)" />
+              <el-avatar v-else :size="80" :icon="UserFilled" />
+              <div class="avatar-overlay">
+                <el-icon><Camera /></el-icon>
+                <span>更换头像</span>
+              </div>
+            </el-upload>
           </div>
           <div class="user-name">{{ userInfo.nickname || userInfo.username }}</div>
           <div class="user-phone">{{ userInfo.phone || '未绑定手机' }}</div>
@@ -27,6 +41,9 @@
             </div>
             <div class="menu-item" :class="{active: activeMenu === 'coupon'}" @click="handleMenuSelect('coupon')">
               <span>优惠券</span>
+            </div>
+            <div class="menu-item" :class="{active: activeMenu === 'refund'}" @click="handleMenuSelect('refund')">
+              <span>我的退款</span>
             </div>
             <div class="menu-item" :class="{active: activeMenu === 'security'}" @click="handleMenuSelect('security')">
               <span>账号安全</span>
@@ -262,7 +279,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, Location, Medal, Ticket, Lock, Iphone, Message, UserFilled } from '@element-plus/icons-vue'
+import { User, Location, Medal, Ticket, Lock, Iphone, Message, UserFilled, Camera } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -274,6 +291,12 @@ const pointsInfo = ref<any>({})
 const pointsLogs = ref<any[]>([])
 const unusedCoupons = ref<any[]>([])
 const couponTab = ref('unused')
+
+// 头像上传相关
+const uploadUrl = ref('http://localhost:8080/api/customer/avatar')
+const uploadHeaders = ref({
+  'Authorization': `Bearer ${localStorage.getItem('token')}`
+})
 
 const editDialogVisible = ref(false)
 const addressDialogVisible = ref(false)
@@ -382,18 +405,56 @@ const passwordForm = reactive({
 })
 
 const handleMenuSelect = (index: string) => {
-  // 积分和优惠券跳转到专门页面
+  // 积分、优惠券和退款跳转到专门页面
   if (index === 'points') {
     router.push('/customer/points')
     return
   } else if (index === 'coupon') {
     router.push('/customer/coupons')
     return
+  } else if (index === 'refund') {
+    router.push('/customer/refunds')
+    return
   }
   
   activeMenu.value = index
   if (index === 'address' && addresses.value.length === 0) {
     loadAddresses()
+  }
+}
+
+// 头像上传相关方法
+const getAvatarUrl = (avatar: string) => {
+  if (!avatar) return ''
+  // OSS返回的是完整URL，直接使用
+  return avatar
+}
+
+const beforeAvatarUpload = (file: any) => {
+  const isImage = file.type.startsWith('image/')
+  const isLt2M = file.size / 1024 / 1024 < 2
+
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!')
+    return false
+  }
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB!')
+    return false
+  }
+  return true
+}
+
+const handleAvatarSuccess = (response: any) => {
+  if (response.code === 200) {
+    ElMessage.success('头像上传成功')
+    userInfo.value.avatar = response.data
+    // 更新本地存储
+    localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+    // 触发页面刷新以更新顶部导航栏头像
+    window.location.reload()
+  } else {
+    ElMessage.error(response.message || '上传失败')
   }
 }
 
@@ -595,6 +656,40 @@ onMounted(() => {
 
 .user-avatar {
   margin: 20px 0;
+  position: relative;
+}
+
+.avatar-uploader {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.avatar-uploader:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+  color: #fff;
+  font-size: 12px;
+}
+
+.avatar-overlay .el-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
 }
 
 .user-name {

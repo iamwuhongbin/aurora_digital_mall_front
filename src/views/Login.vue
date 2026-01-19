@@ -17,6 +17,18 @@
           <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" show-password />
         </el-form-item>
         
+        <el-form-item label="验证码" prop="captchaCode">
+          <div style="display: flex; gap: 10px;">
+            <el-input v-model="loginForm.captchaCode" placeholder="请输入验证码" style="flex: 1" />
+            <img 
+              :src="captchaImage" 
+              @click="refreshCaptcha" 
+              style="height: 40px; cursor: pointer; border: 1px solid #dcdfe6; border-radius: 4px;"
+              title="点击刷新验证码"
+            />
+          </div>
+        </el-form-item>
+        
         <el-form-item>
           <el-button type="primary" @click="handleLogin" :loading="loading" style="width: 100%">
             登录
@@ -32,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -51,13 +63,35 @@ const userTypes = [
 
 const loginForm = reactive({
   username: '',
-  password: ''
+  password: '',
+  captchaId: '',
+  captchaCode: ''
 })
+
+const captchaImage = ref('')
 
 const rules: FormRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
+
+// 获取验证码
+const refreshCaptcha = async () => {
+  try {
+    const res = await request.get('/captcha/generate')
+    captchaImage.value = res.data.captchaImage
+    loginForm.captchaId = res.data.captchaId
+    loginForm.captchaCode = '' // 清空验证码输入
+  } catch (error) {
+    ElMessage.error('获取验证码失败')
+  }
+}
+
+// 页面加载时获取验证码
+onMounted(() => {
+  refreshCaptcha()
+})
 
 const handleLogin = async () => {
   console.log('=== 开始登录 ===')
@@ -84,7 +118,15 @@ const handleLogin = async () => {
         
         localStorage.setItem('token', res.data.token)
         localStorage.setItem('userType', userType.value)
-        localStorage.setItem('userInfo', JSON.stringify(res.data))
+        
+        // 根据用户类型保存到不同的localStorage key
+        if (userType.value === 'customer') {
+          localStorage.setItem('userInfo', JSON.stringify(res.data))
+        } else if (userType.value === 'merchant') {
+          localStorage.setItem('merchantInfo', JSON.stringify(res.data))
+        } else {
+          localStorage.setItem('adminInfo', JSON.stringify(res.data))
+        }
         
         ElMessage.success('登录成功')
         
@@ -99,6 +141,8 @@ const handleLogin = async () => {
       } catch (error: any) {
         console.error('登录失败:', error)
         console.error('错误详情:', error.response)
+        // 登录失败后刷新验证码
+        refreshCaptcha()
       } finally {
         loading.value = false
       }

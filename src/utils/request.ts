@@ -6,6 +6,9 @@ const request = axios.create({
   timeout: 10000
 })
 
+// 标记是否正在跳转登录页，防止重复提示
+let isRedirecting = false
+
 // 请求拦截器
 request.interceptors.request.use(
   (config) => {
@@ -34,6 +37,27 @@ request.interceptors.response.use(
   },
   (error) => {
     if (error.response) {
+      const status = error.response.status
+      
+      // Token过期或未授权
+      if (status === 401 || status === 403) {
+        // 防止重复提示和跳转
+        if (!isRedirecting) {
+          isRedirecting = true
+          ElMessage.error('登录已过期，请重新登录')
+          
+          // 清除所有本地存储
+          localStorage.clear()
+          
+          // 延迟跳转，确保用户看到提示
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 1000)
+        }
+        
+        return Promise.reject(new Error('登录已过期'))
+      }
+      
       ElMessage.error(error.response.data.message || '请求失败')
     } else {
       ElMessage.error(error.message || '网络错误')

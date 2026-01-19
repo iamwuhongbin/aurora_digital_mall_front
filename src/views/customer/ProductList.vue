@@ -54,6 +54,20 @@
 
       <!-- 右侧商品区域 -->
       <main class="product-main">
+        <!-- 店铺信息横幅 -->
+        <div v-if="merchantInfo" class="merchant-banner">
+          <div class="merchant-banner-content">
+            <el-icon class="shop-icon"><Shop /></el-icon>
+            <div class="merchant-details">
+              <h2 class="merchant-name">{{ merchantInfo.shopName }}</h2>
+              <p class="merchant-desc">欢迎光临本店，精选优质商品</p>
+            </div>
+          </div>
+          <el-button type="primary" @click="clearMerchantFilter">
+            查看全部商品
+          </el-button>
+        </div>
+
         <!-- 搜索栏和排序 -->
         <div class="search-bar">
           <el-input 
@@ -141,7 +155,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Search, Folder, ArrowRight } from '@element-plus/icons-vue'
+import { Search, Folder, ArrowRight, Shop } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -157,6 +171,7 @@ const currentPage = ref(1)
 const pageSize = ref(12)
 const total = ref(0)
 const expandedCategories = ref<number[]>([])
+const merchantInfo = ref<any>(null)
 
 // 展平分类树为一维数组
 const flattenCategories = (tree: any[]): any[] => {
@@ -241,6 +256,11 @@ const loadProducts = async () => {
       selectedCategoryId.value = Number(route.query.categoryId)
     }
     
+    // 支持按商家ID筛选
+    if (route.query.merchantId) {
+      params.merchantId = route.query.merchantId
+    }
+    
     if (sortBy.value) {
       params.sortBy = sortBy.value
     }
@@ -260,9 +280,30 @@ const goToDetail = (id: number) => {
   router.push(`/customer/product/${id}`)
 }
 
+// 加载商家信息
+const loadMerchantInfo = async (merchantId: number) => {
+  try {
+    const res = await request.get(`/merchant/${merchantId}`)
+    merchantInfo.value = res.data
+  } catch (error) {
+    console.error('加载商家信息失败', error)
+  }
+}
+
+// 清除商家筛选
+const clearMerchantFilter = () => {
+  merchantInfo.value = null
+  router.push('/customer/products')
+}
+
 onMounted(async () => {
   await loadCategories()
   await loadProducts()
+  
+  // 如果URL中有商家ID，加载商家信息
+  if (route.query.merchantId) {
+    await loadMerchantInfo(Number(route.query.merchantId))
+  }
   
   // 如果URL中有分类ID，自动展开对应的父分类
   if (route.query.categoryId) {
@@ -430,6 +471,57 @@ onMounted(async () => {
 .product-main {
   flex: 1;
   min-width: 0;
+}
+
+/* 店铺信息横幅 */
+.merchant-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 30px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.merchant-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.merchant-banner .shop-icon {
+  font-size: 40px;
+  color: white;
+}
+
+.merchant-details {
+  color: white;
+}
+
+.merchant-name {
+  margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+}
+
+.merchant-desc {
+  margin: 5px 0 0 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.merchant-banner .el-button {
+  background: white;
+  color: #667eea;
+  border: none;
+}
+
+.merchant-banner .el-button:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: #764ba2;
 }
 
 .search-bar {

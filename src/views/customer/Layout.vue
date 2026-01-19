@@ -24,7 +24,8 @@
           <div class="user-info">
             <el-dropdown>
               <span class="el-dropdown-link">
-                <el-avatar :size="32" :icon="UserFilled" />
+                <el-avatar v-if="userInfo.avatar" :size="32" :src="userInfo.avatar" />
+                <el-avatar v-else :size="32" :icon="UserFilled" />
                 <span style="margin-left: 8px">{{ userInfo.nickname || '用户' }}</span>
               </span>
               <template #dropdown>

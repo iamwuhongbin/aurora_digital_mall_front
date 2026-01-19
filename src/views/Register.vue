@@ -29,6 +29,20 @@
           <el-form-item label="手机号" prop="phone">
             <el-input v-model="registerForm.phone" placeholder="请输入手机号" />
           </el-form-item>
+          
+          <el-form-item label="短信验证码" prop="smsCode">
+            <div style="display: flex; gap: 10px;">
+              <el-input v-model="registerForm.smsCode" placeholder="请输入验证码" style="flex: 1" />
+              <el-button 
+                type="primary" 
+                @click="sendSmsCode" 
+                :disabled="smsCountdown > 0"
+                style="width: 120px;"
+              >
+                {{ smsCountdown > 0 ? `${smsCountdown}秒后重发` : '发送验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
         </template>
         
         <template v-if="userType === 'merchant'">
@@ -103,12 +117,15 @@ const registerForm = reactive({
   confirmPassword: '',
   nickname: '',
   phone: '',
+  smsCode: '',
   shopName: '',
   contactPerson: '',
   contactPhone: '',
   businessLicense: '',
   licenseImage: ''
 })
+
+const smsCountdown = ref(0)
 
 // 图片上传配置
 const uploadUrl = 'http://localhost:8080/api/upload/image'
@@ -134,12 +151,47 @@ const rules: FormRules = {
   ],
   confirmPassword: [{ validator: validatePass, trigger: 'blur' }],
   nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
-  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
+  ],
+  smsCode: [{ required: true, message: '请输入短信验证码', trigger: 'blur' }],
   shopName: [{ required: true, message: '请输入店铺名称', trigger: 'blur' }],
   contactPerson: [{ required: true, message: '请输入联系人', trigger: 'blur' }],
   contactPhone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
   businessLicense: [{ required: true, message: '请输入营业执照号', trigger: 'blur' }],
   licenseImage: [{ required: true, message: '请上传营业执照图片', trigger: 'change' }]
+}
+
+// 发送短信验证码
+const sendSmsCode = async () => {
+  // 验证手机号
+  if (!registerForm.phone) {
+    ElMessage.error('请先输入手机号')
+    return
+  }
+  if (!/^1[3-9]\d{9}$/.test(registerForm.phone)) {
+    ElMessage.error('手机号格式不正确')
+    return
+  }
+  
+  try {
+    await request.post('/sms/send', null, {
+      params: { phone: registerForm.phone }
+    })
+    ElMessage.success('验证码已发送')
+    
+    // 开始倒计时
+    smsCountdown.value = 60
+    const timer = setInterval(() => {
+      smsCountdown.value--
+      if (smsCountdown.value <= 0) {
+        clearInterval(timer)
+      }
+    }, 1000)
+  } catch (error: any) {
+    ElMessage.error(error.message || '发送失败')
+  }
 }
 
 // 图片上传成功回调

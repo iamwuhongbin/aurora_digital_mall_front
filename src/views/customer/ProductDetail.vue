@@ -42,9 +42,18 @@
             
             <!-- 商家信息 -->
             <div class="merchant-info" v-if="product.shopName">
-              <el-icon class="shop-icon"><Shop /></el-icon>
-              <span class="shop-name">{{ product.shopName }}</span>
-              <el-tag size="small" type="success" style="margin-left: 10px;">官方认证</el-tag>
+              <div class="merchant-left">
+                <el-icon class="shop-icon"><Shop /></el-icon>
+                <span class="shop-name">{{ product.shopName }}</span>
+                <el-tag size="small" type="success" style="margin-left: 10px;">官方认证</el-tag>
+              </div>
+              <el-button 
+                type="primary" 
+                size="small" 
+                @click="goToMerchantShop"
+              >
+                进入店铺
+              </el-button>
             </div>
             
             <div class="price-section">
@@ -449,6 +458,15 @@ const contactMerchant = () => {
   }
 }
 
+// 进入店铺
+const goToMerchantShop = () => {
+  if (product.value.merchantId) {
+    router.push(`/customer/products?merchantId=${product.value.merchantId}`)
+  } else {
+    ElMessage.error('商家信息不存在')
+  }
+}
+
 // 加载评价列表
 const loadReviews = async () => {
   reviewLoading.value = true
@@ -618,11 +636,17 @@ onMounted(() => {
 .merchant-info {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 12px 16px;
   background: #f5f7fa;
   border-radius: 8px;
   margin-bottom: 20px;
   border-left: 3px solid #409eff;
+}
+
+.merchant-left {
+  display: flex;
+  align-items: center;
 }
 
 .shop-icon {

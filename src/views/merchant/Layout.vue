@@ -31,6 +31,14 @@
           <el-icon><Ticket /></el-icon>
           <span>优惠券管理</span>
         </el-menu-item>
+        <el-menu-item index="/merchant/refunds">
+          <el-icon><Wallet /></el-icon>
+          <span>退款管理</span>
+        </el-menu-item>
+        <el-menu-item index="/merchant/profile">
+          <el-icon><UserFilled /></el-icon>
+          <span>个人中心</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     
@@ -40,8 +48,9 @@
           <span>极光数码商城 - 商家端</span>
           <el-dropdown>
             <span class="user-info">
-              <el-avatar :size="32" :icon="UserFilled" />
-              <span style="margin-left: 8px">商家</span>
+              <el-avatar v-if="merchantInfo.avatar" :size="32" :src="merchantInfo.avatar" />
+              <el-avatar v-else :size="32" :icon="UserFilled" />
+              <span style="margin-left: 8px">{{ merchantInfo.username || '商家' }}</span>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
@@ -60,15 +69,47 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { DataAnalysis, Goods, ShoppingCart, ChatDotRound, ChatLineSquare, Ticket, UserFilled, Menu } from '@element-plus/icons-vue'
+import { DataAnalysis, Goods, ShoppingCart, ChatDotRound, ChatLineSquare, Ticket, UserFilled, Menu, Wallet } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
 
+const merchantInfo = ref<any>({})
 const activeMenu = computed(() => route.path)
+
+onMounted(async () => {
+  // 先尝试从 merchantInfo 加载
+  let info = localStorage.getItem('merchantInfo')
+  if (info) {
+    merchantInfo.value = JSON.parse(info)
+  } else {
+    // 如果没有 merchantInfo，尝试从 userInfo 加载
+    info = localStorage.getItem('userInfo')
+    if (info) {
+      merchantInfo.value = JSON.parse(info)
+    }
+  }
+  
+  // 如果有 token，尝试从服务器获取最新信息
+  const token = localStorage.getItem('token')
+  if (token && !merchantInfo.value.avatar) {
+    try {
+      const axios = (await import('axios')).default
+      const response = await axios.get('http://localhost:8080/api/merchant/profile', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (response.data.code === 200) {
+        merchantInfo.value = response.data.data
+        localStorage.setItem('merchantInfo', JSON.stringify(response.data.data))
+      }
+    } catch (error) {
+      console.error('加载商家信息失败', error)
+    }
+  }
+})
 
 const handleLogout = () => {
   localStorage.clear()
