@@ -21,6 +21,28 @@
         </div>
       </el-card>
 
+      <!-- 商品信息 -->
+      <el-card class="section-card">
+        <template #header>
+          <span class="card-title">商品信息</span>
+        </template>
+        <div class="order-items">
+          <div v-for="item in refund.orderItems" :key="item.productId" class="order-item">
+            <el-image 
+              :src="item.productImage" 
+              fit="cover"
+              class="product-image"
+            />
+            <div class="item-info">
+              <div class="product-name">{{ item.productName }}</div>
+              <div class="product-price">¥{{ item.productPrice }}</div>
+            </div>
+            <div class="item-quantity">x{{ item.quantity }}</div>
+            <div class="item-total">¥{{ item.totalAmount }}</div>
+          </div>
+        </div>
+      </el-card>
+
       <!-- 退款信息 -->
       <el-card class="section-card">
         <template #header>
@@ -41,14 +63,14 @@
         </el-descriptions>
 
         <!-- 退款凭证图片 -->
-        <div v-if="refund.refundImages" class="refund-images">
+        <div v-if="refund.refundImages && refund.refundImages.length > 0" class="refund-images">
           <h4>退款凭证</h4>
           <div class="image-list">
             <el-image
-              v-for="(img, index) in refund.refundImages.split(',')"
+              v-for="(img, index) in refund.refundImages"
               :key="index"
               :src="img"
-              :preview-src-list="refund.refundImages.split(',')"
+              :preview-src-list="refund.refundImages"
               fit="cover"
               class="refund-image"
             />
@@ -107,21 +129,27 @@
       </el-card>
 
       <!-- 操作按钮 -->
-      <div class="action-buttons">
-        <!-- 待审核状态 -->
+      <div class="action-buttons" v-if="refund.status">
+        <!-- 待审核状态 (状态1) -->
         <template v-if="refund.status === 1">
           <el-button type="primary" @click="showApproveDialog(true)">同意退款</el-button>
           <el-button type="danger" @click="showApproveDialog(false)">拒绝退款</el-button>
         </template>
 
-        <!-- 退货中状态 -->
-        <el-button 
-          v-if="refund.status === 4"
-          type="primary" 
-          @click="confirmReceive"
-        >
-          确认收货并退款
-        </el-button>
+        <!-- 退货中状态 (状态4) -->
+        <template v-if="refund.status === 4">
+          <el-button 
+            type="primary" 
+            @click="confirmReceive"
+          >
+            确认收货并退款
+          </el-button>
+        </template>
+
+        <!-- 如果没有可操作的按钮，显示提示 -->
+        <div v-if="![1, 4].includes(refund.status)" class="no-action-tip">
+          <el-text type="info">当前状态：{{ refund.statusText }}，无需操作</el-text>
+        </div>
       </div>
     </div>
 
@@ -351,5 +379,69 @@ onMounted(() => {
   padding: 20px;
   background: #f5f7fa;
   border-radius: 4px;
+}
+
+/* 商品信息 */
+.order-items {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  gap: 15px;
+}
+
+.product-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-name {
+  font-size: 14px;
+  color: #303133;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.product-price {
+  font-size: 14px;
+  color: #909399;
+}
+
+.item-quantity {
+  font-size: 14px;
+  color: #606266;
+  padding: 0 20px;
+}
+
+.item-total {
+  font-size: 16px;
+  color: #f56c6c;
+  font-weight: bold;
+  min-width: 80px;
+  text-align: right;
+}
+
+.no-action-tip {
+  text-align: center;
+  padding: 10px;
+  color: #909399;
 }
 </style>

@@ -104,31 +104,72 @@
         <div class="product-content" v-loading="loading">
           <el-row :gutter="20" v-if="products.length > 0">
             <el-col :span="6" v-for="product in products" :key="product.id">
-              <el-card shadow="hover" class="product-card" @click="goToDetail(product.id)">
-                <img :src="product.mainImage || '/placeholder.png'" class="product-image" />
+              <div class="product-card" @click="goToDetail(product.id)">
+                <div class="product-image-wrapper">
+                  <img :src="product.mainImage || '/placeholder.png'" class="product-image" />
+                  
+                  <!-- 折扣标签 -->
+                  <div v-if="product.originalPrice && product.originalPrice > product.salePrice" class="discount-badge">
+                    {{ Math.round((1 - product.salePrice / product.originalPrice) * 100) }}% OFF
+                  </div>
+                  
+                  <!-- 热销标签 -->
+                  <div v-if="product.salesVolume > 100" class="hot-badge">
+                    <el-icon><TrendCharts /></el-icon>
+                    热销
+                  </div>
+                  
+                  <!-- 库存不足提示 -->
+                  <div v-if="product.stock && product.stock < 10 && product.stock > 0" class="stock-badge">
+                    仅剩{{ product.stock }}件
+                  </div>
+                  
+                  <!-- 悬浮操作按钮 -->
+                  <div class="hover-actions">
+                    <el-button circle size="small" @click.stop="addToCart(product)">
+                      <el-icon><ShoppingCart /></el-icon>
+                    </el-button>
+                    <el-button circle size="small" @click.stop="toggleFavorite(product)">
+                      <el-icon><Star /></el-icon>
+                    </el-button>
+                  </div>
+                </div>
+                
                 <div class="product-info">
-                  <h4 class="product-name">{{ product.productName }}</h4>
+                  <h4 class="product-name" :title="product.productName">{{ product.productName }}</h4>
+                  
                   <div class="product-rating" v-if="product.averageRating && product.ratingCount > 0">
                     <el-rate 
                       :model-value="product.averageRating" 
                       disabled 
-                      show-score
+                      size="small"
                       :colors="['#99A9BF', '#F7BA2A', '#FF9900']"
-                      text-color="#ff9900"
                     />
                     <span class="rating-count">({{ product.ratingCount }})</span>
                   </div>
+                  
                   <div class="price-section">
-                    <span class="sale-price">¥{{ product.salePrice }}</span>
+                    <div class="price-main">
+                      <span class="price-symbol">¥</span>
+                      <span class="sale-price">{{ product.salePrice }}</span>
+                    </div>
                     <span class="original-price" v-if="product.originalPrice && product.originalPrice > product.salePrice">
                       ¥{{ product.originalPrice }}
                     </span>
                   </div>
-                  <div class="product-meta">
-                    <span class="sales">已售 {{ product.salesVolume }}</span>
+                  
+                  <div class="product-footer">
+                    <div class="product-meta">
+                      <el-icon class="meta-icon"><Goods /></el-icon>
+                      <span class="sales">{{ product.salesVolume || 0 }}人付款</span>
+                    </div>
+                    <el-tag v-if="product.stock && product.stock > 0" size="small" type="success">
+                      有货 {{ product.stock }}件
+                    </el-tag>
+                    <el-tag v-else size="small" type="info">缺货</el-tag>
                   </div>
                 </div>
-              </el-card>
+              </div>
             </el-col>
           </el-row>
 
@@ -155,7 +196,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Search, Folder, ArrowRight, Shop } from '@element-plus/icons-vue'
+import { Search, Folder, ArrowRight, Shop, ShoppingCart, Star, TrendCharts, Goods } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -280,6 +321,31 @@ const goToDetail = (id: number) => {
   router.push(`/customer/product/${id}`)
 }
 
+// 添加到购物车
+const addToCart = async (product: any) => {
+  try {
+    await request.post('/cart/add', {
+      productId: product.id,
+      quantity: 1
+    })
+    ElMessage.success('已添加到购物车')
+  } catch (error: any) {
+    ElMessage.error(error.message || '添加失败')
+  }
+}
+
+// 收藏/取消收藏
+const toggleFavorite = async (product: any) => {
+  try {
+    await request.post('/favorite/toggle', {
+      productId: product.id
+    })
+    ElMessage.success('操作成功')
+  } catch (error: any) {
+    ElMessage.error(error.message || '操作失败')
+  }
+}
+
 // 加载商家信息
 const loadMerchantInfo = async (merchantId: number) => {
   try {
@@ -324,38 +390,59 @@ onMounted(async () => {
 
 .layout-wrapper {
   display: flex;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 20px;
-  gap: 20px;
+  gap: 24px;
+  justify-content: center;
 }
 
 /* 左侧分类导航 */
 .category-sidebar {
-  width: 240px;
+  width: 200px;
   flex-shrink: 0;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   height: fit-content;
   position: sticky;
   top: 80px;
+  border: 1px solid #f0f0f0;
 }
 
 .sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid #ebeef5;
+  padding: 16px 18px;
+  border-bottom: 2px solid #f0f0f0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px 12px 0 0;
 }
 
 .sidebar-header h3 {
   margin: 0;
-  font-size: 18px;
-  color: #303133;
+  font-size: 16px;
+  color: white;
   font-weight: bold;
+  text-align: center;
+  letter-spacing: 1px;
 }
 
 .category-menu {
-  padding: 10px 0;
+  padding: 8px 0;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.category-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.category-menu::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 2px;
+}
+
+.category-menu::-webkit-scrollbar-thumb:hover {
+  background: #c0c4cc;
 }
 
 .category-section {
@@ -365,79 +452,96 @@ onMounted(async () => {
 .category-item {
   display: flex;
   align-items: center;
-  padding: 12px 20px;
+  padding: 10px 16px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  margin: 2px 8px;
+  border-radius: 8px;
 }
 
 .category-item:hover {
-  background: #f5f7fa;
+  background: linear-gradient(90deg, #f5f7fa 0%, #ecf5ff 100%);
+  transform: translateX(4px);
 }
 
 .category-item.active {
-  background: #ecf5ff;
-  color: #409eff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.category-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: #409eff;
+.category-item.active .category-icon,
+.category-item.active .arrow-icon {
+  color: white;
 }
 
 .category-item.all-item {
   font-weight: bold;
-  border-bottom: 1px solid #ebeef5;
-  margin-bottom: 5px;
+  margin: 2px 8px 8px 8px;
+  border-bottom: 2px solid #f0f0f0;
+  border-radius: 8px 8px 0 0;
+  padding-bottom: 12px;
 }
 
 .category-item.parent-item {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .category-item.child-item {
-  padding-left: 50px;
-  font-size: 13px;
+  padding-left: 36px;
+  font-size: 12px;
   color: #606266;
+  margin: 2px 8px;
 }
 
 .category-item.child-item:hover {
-  color: #409eff;
+  color: #667eea;
+  background: linear-gradient(90deg, #f5f7fa 0%, #ecf5ff 100%);
+}
+
+.category-item.child-item.active {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  color: #667eea;
+  font-weight: 500;
 }
 
 .category-icon {
-  margin-right: 8px;
-  font-size: 16px;
+  margin-right: 6px;
+  font-size: 14px;
+  color: #909399;
+  transition: color 0.3s;
 }
 
 .category-name {
   flex: 1;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .arrow-icon {
-  font-size: 14px;
-  color: #909399;
-  transition: transform 0.3s;
+  font-size: 12px;
+  color: #c0c4cc;
+  transition: all 0.3s;
   cursor: pointer;
 }
 
 .arrow-icon:hover {
-  color: #409eff;
+  color: #667eea;
 }
 
 .category-item.expanded .arrow-icon {
   transform: rotate(90deg);
+  color: #667eea;
 }
 
 .children-list {
-  background: #fafafa;
+  background: transparent;
   overflow: hidden;
+  padding: 4px 0;
 }
 
 /* 折叠动画 */
@@ -471,6 +575,7 @@ onMounted(async () => {
 .product-main {
   flex: 1;
   min-width: 0;
+  max-width: 1280px;
 }
 
 /* 店铺信息横幅 */
@@ -545,76 +650,231 @@ onMounted(async () => {
 .product-card {
   cursor: pointer;
   margin-bottom: 20px;
-  transition: all 0.3s;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+.product-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(64, 158, 255, 0.05) 0%, rgba(103, 194, 58, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.product-card:hover::before {
+  opacity: 1;
 }
 
 .product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.product-image-wrapper {
+  position: relative;
+  overflow: hidden;
+  background: #f5f7fa;
 }
 
 .product-image {
   width: 100%;
-  height: 220px;
+  height: 260px;
   object-fit: cover;
-  border-radius: 4px;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-card:hover .product-image {
+  transform: scale(1.08);
+}
+
+/* 折扣标签 */
+.discount-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+  z-index: 2;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* 热销标签 */
+.hot-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(245, 87, 108, 0.4);
+  z-index: 2;
+}
+
+/* 库存标签 */
+.stock-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(255, 152, 0, 0.95);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  z-index: 2;
+}
+
+/* 悬浮操作按钮 */
+.hover-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s;
+  z-index: 2;
+}
+
+.product-card:hover .hover-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hover-actions .el-button {
+  background: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.hover-actions .el-button:hover {
+  background: #409eff;
+  color: white;
+  transform: scale(1.1);
 }
 
 .product-info {
-  padding: 15px 0;
+  padding: 16px;
+  position: relative;
+  z-index: 2;
 }
 
 .product-name {
-  font-size: 14px;
+  font-size: 15px;
   color: #303133;
-  margin: 0 0 10px 0;
-  height: 40px;
-  line-height: 20px;
+  margin: 0 0 12px 0;
+  height: 42px;
+  line-height: 21px;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.product-card:hover .product-name {
+  color: #409eff;
 }
 
 .price-section {
-  margin: 10px 0;
+  margin: 12px 0;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.price-main {
+  display: flex;
+  align-items: baseline;
+}
+
+.price-symbol {
+  color: #ff4757;
+  font-size: 16px;
+  font-weight: bold;
+  margin-right: 2px;
 }
 
 .sale-price {
-  color: #f56c6c;
-  font-size: 22px;
+  color: #ff4757;
+  font-size: 26px;
   font-weight: bold;
+  font-family: 'Arial', sans-serif;
 }
 
 .original-price {
-  color: #909399;
-  font-size: 14px;
+  color: #999;
+  font-size: 13px;
   text-decoration: line-through;
+  opacity: 0.8;
 }
 
 .product-rating {
   display: flex;
   align-items: center;
-  margin: 8px 0;
+  margin: 10px 0;
+  gap: 6px;
 }
 
 .rating-count {
-  margin-left: 8px;
   color: #999;
-  font-size: 14px;
+  font-size: 12px;
+}
+
+.product-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
 }
 
 .product-meta {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 4px;
   color: #909399;
   font-size: 12px;
-  margin-top: 8px;
+}
+
+.meta-icon {
+  font-size: 14px;
+  color: #c0c4cc;
 }
 
 .sales {

@@ -17,6 +17,7 @@
             <h2>{{ order.orderStatusText }}</h2>
             <p v-if="order.orderStatus === 2">请尽快为客户发货</p>
             <p v-else-if="order.orderStatus === 3">商品运输中，请关注物流信息</p>
+            <p v-else-if="order.orderStatus === 6">客户已申请退款，请及时处理</p>
           </div>
         </div>
       </el-card>
@@ -39,7 +40,7 @@
       </el-card>
       
       <!-- 物流信息 -->
-      <el-card v-if="logistics" class="section-card">
+      <el-card v-if="logistics && order.orderStatus !== 6" class="section-card">
         <template #header>
           <div class="card-header">
             <el-icon><Van /></el-icon>
@@ -273,7 +274,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Loading, Location, Van, Box, Document, Clock, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import { Loading, Location, Van, Box, Document, Clock, CircleCheck, CircleClose, Warning } from '@element-plus/icons-vue'
 import AmapContainer from '@/components/AmapContainer.vue'
 import request from '@/utils/request'
 import { regionData } from '@/utils/regionData'
@@ -308,8 +309,8 @@ const loadOrderDetail = async () => {
     const res = await request.get(`/merchant/order/${orderId}`)
     order.value = res.data
     
-    // 如果订单已发货，加载物流信息
-    if (order.value.orderStatus >= 3) {
+    // 如果订单已发货且不是退款中，加载物流信息
+    if (order.value.orderStatus >= 3 && order.value.orderStatus !== 6) {
       await loadLogistics()
     }
   } catch (error: any) {
@@ -457,7 +458,9 @@ const getStatusIcon = (status: number) => {
     case 3: return Van
     case 4:
     case 5: return CircleCheck
-    case 6: return CircleClose
+    case 6: return Warning
+    case 7: return CircleCheck
+    case 8: return CircleClose
     default: return Clock
   }
 }
@@ -469,7 +472,9 @@ const getStatusColor = (status: number) => {
     case 3: return '#409eff'
     case 4:
     case 5: return '#67c23a'
-    case 6: return '#f56c6c'
+    case 6: return '#e6a23c'
+    case 7: return '#67c23a'
+    case 8: return '#f56c6c'
     default: return '#909399'
   }
 }

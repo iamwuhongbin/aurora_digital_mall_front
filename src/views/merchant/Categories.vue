@@ -23,8 +23,8 @@
         </el-table-column>
         <el-table-column label="层级" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.level === 1 ? 'primary' : 'success'">
-              {{ row.level === 1 ? '一级分类' : '二级分类' }}
+            <el-tag :type="row.level === 1 ? 'primary' : row.level === 2 ? 'success' : 'warning'">
+              {{ row.level === 1 ? '一级分类' : row.level === 2 ? '二级分类' : '三级分类' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -40,7 +40,7 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="showEditDialog(row)">编辑</el-button>
-            <el-button v-if="row.level === 1" link type="success" size="small" @click="showAddChildDialog(row)">
+            <el-button v-if="row.level < 3" link type="success" size="small" @click="showAddChildDialog(row)">
               添加子分类
             </el-button>
             <el-button link type="danger" size="small" @click="deleteCategory(row.id)">删除</el-button>
@@ -58,15 +58,30 @@
         <el-form-item label="分类图标">
           <ImageUpload v-model="categoryForm.categoryIcon" tip="建议尺寸：200x200像素" />
         </el-form-item>
-        <el-form-item label="上级分类" v-if="!categoryForm.parentId">
-          <el-select v-model="categoryForm.parentId" placeholder="请选择上级分类（不选则为一级分类）" clearable style="width: 100%">
+        <el-form-item label="上级分类">
+          <el-select 
+            v-model="categoryForm.parentId" 
+            placeholder="请选择上级分类（不选则为一级分类）" 
+            clearable 
+            style="width: 100%"
+            :disabled="isEditingWithChildren"
+            @change="handleParentChange"
+          >
+            <el-option label="无（一级分类）" :value="null" />
             <el-option 
-              v-for="cat in topCategories" 
+              v-for="cat in availableParentCategories" 
               :key="cat.id" 
-              :label="cat.categoryName" 
-              :value="cat.id" 
+              :label="getCategoryLabel(cat)" 
+              :value="cat.id"
+              :disabled="cat.disabled"
             />
           </el-select>
+          <div v-if="isEditingWithChildren" style="color: #909399; font-size: 12px; margin-top: 5px;">
+            该分类下有子分类，不能修改上级分类
+          </div>
+          <div v-else style="color: #909399; font-size: 12px; margin-top: 5px;">
+            最多支持三级分类，选择一级分类作为上级则为二级分类，选择二级分类作为上级则为三级分类
+          </div>
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
           <el-input-number v-model="categoryForm.sortOrder" :min="0" />
@@ -120,16 +135,104 @@ const topCategories = computed(() => {
   return categories.value.filter(cat => cat.level === 1)
 })
 
+// 获取所有分类的扁平列表（包含所有层级）
+const allCategoriesFlat = computed(() => {
+  const result: any[] = []
+  const flatten = (cats: any[], level: number) => {
+    cats.forEach(cat => {
+      result.push({ ...cat, displayLevel: level })
+      if (cat.children && cat.children.length > 0) {
+        flatten(cat.children, level + 1)
+      }
+    })
+  }
+  flatten(categories.value, 1)
+  return result
+})
+
+// 获取可选的上级分类（排除自己和自己的子孙分类，且只显示一级和二级分类）
+const availableParentCategories = computed(() => {
+  const currentId = categoryForm.id
+  
+  // 获取当前分类的所有子孙分类ID
+  const getDescendantIds = (id: number): number[] => {
+    const ids: number[] = [id]
+    const category = allCategoriesFlat.value.find(cat => cat.id === id)
+    if (category && category.children) {
+      category.children.forEach((child: any) => {
+        ids.push(...getDescendantIds(child.id))
+      })
+    }
+    return ids
+  }
+  
+  const excludeIds = currentId ? getDescendantIds(currentId) : []
+  
+  return allCategoriesFlat.value
+    .filter(cat => {
+      // 排除自己和自己的子孙分类
+      if (excludeIds.includes(cat.id)) return false
+      // 只显示一级和二级分类作为可选上级（三级分类不能再有子分类）
+      return cat.level <= 2
+    })
+    .map(cat => ({
+      ...cat,
+      disabled: false
+    }))
+})
+
+// 获取分类显示标签（带层级缩进）
+const getCategoryLabel = (cat: any) => {
+  const indent = '　'.repeat(cat.level - 1)
+  const levelText = cat.level === 1 ? '[一级]' : '[二级]'
+  return `${indent}${levelText} ${cat.categoryName}`
+}
+
+// 判断当前编辑的分类是否有子分类（有子分类则不能修改上级分类）
+const isEditingWithChildren = computed(() => {
+  if (!categoryForm.id) return false
+  const category = allCategoriesFlat.value.find(cat => cat.id === categoryForm.id)
+  return category && category.children && category.children.length > 0
+})
+
+// 处理上级分类变化
+const handleParentChange = () => {
+  // 根据选择的上级分类自动设置层级
+  if (!categoryForm.parentId) {
+    categoryForm.level = 1
+  } else {
+    const parent = allCategoriesFlat.value.find(cat => cat.id === categoryForm.parentId)
+    if (parent) {
+      categoryForm.level = parent.level + 1
+    }
+  }
+}
+
 const loadCategories = async () => {
   loading.value = true
   try {
     const res = await request.get('/category/list')
-    // 构建树形结构
-    const topLevel = res.data.filter((cat: any) => cat.level === 1)
-    topLevel.forEach((parent: any) => {
-      parent.children = res.data.filter((cat: any) => cat.parentId === parent.id)
-    })
-    categories.value = topLevel
+    console.log('分类数据:', res.data)
+    
+    // 构建三级树形结构
+    const buildTree = (parentId: number | null): any[] => {
+      return res.data
+        .filter((cat: any) => {
+          // 一级分类：parentId 为 null 或 0
+          if (parentId === null) {
+            return !cat.parentId || cat.parentId === 0
+          }
+          // 子分类：匹配 parentId
+          return cat.parentId === parentId
+        })
+        .map((cat: any) => ({
+          ...cat,
+          children: buildTree(cat.id)
+        }))
+    }
+    
+    categories.value = buildTree(null)
+    console.log('构建后的分类树:', categories.value)
   } catch (error) {
     console.error('加载分类失败', error)
     ElMessage.error('加载分类失败')
@@ -145,10 +248,12 @@ const showAddDialog = () => {
 }
 
 const showAddChildDialog = (parent: any) => {
-  dialogTitle.value = `添加子分类（${parent.categoryName}）`
+  const nextLevel = parent.level + 1
+  const levelText = nextLevel === 2 ? '二级' : '三级'
+  dialogTitle.value = `添加${levelText}分类（${parent.categoryName}）`
   resetForm()
   categoryForm.parentId = parent.id
-  categoryForm.level = 2
+  categoryForm.level = nextLevel
   dialogVisible.value = true
 }
 
@@ -181,11 +286,20 @@ const saveCategory = async () => {
   await formRef.value.validate(async (valid) => {
     if (!valid) return
     
+    // 验证层级限制
+    if (categoryForm.level > 3) {
+      ElMessage.warning('最多支持三级分类')
+      return
+    }
+    
     saving.value = true
     try {
       // 根据parentId设置level
       if (categoryForm.parentId) {
-        categoryForm.level = 2
+        const parent = allCategoriesFlat.value.find(cat => cat.id === categoryForm.parentId)
+        if (parent) {
+          categoryForm.level = parent.level + 1
+        }
       } else {
         categoryForm.level = 1
       }

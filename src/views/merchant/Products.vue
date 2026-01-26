@@ -122,14 +122,18 @@
           <el-input v-model="productForm.productName" placeholder="请输入商品名称" />
         </el-form-item>
         <el-form-item label="商品分类" prop="categoryId">
-          <el-select v-model="productForm.categoryId" placeholder="请选择分类" style="width: 100%">
-            <el-option 
-              v-for="category in categories" 
-              :key="category.id" 
-              :label="category.categoryName" 
-              :value="category.id" 
-            />
-          </el-select>
+          <el-cascader
+            v-model="categoryPath"
+            :options="categoryTree"
+            :props="cascaderProps"
+            placeholder="请选择商品分类"
+            style="width: 100%"
+            clearable
+            @change="handleCategoryChange"
+          />
+          <div style="color: #909399; font-size: 12px; margin-top: 5px;">
+            请选择具体的商品分类，支持一级、二级或三级分类
+          </div>
         </el-form-item>
         <el-form-item label="商品货号">
           <el-input v-model="productForm.productSn" placeholder="留空自动生成" />
@@ -198,7 +202,9 @@ import SkuManager from '@/components/SkuManager.vue'
 const loading = ref(false)
 const saving = ref(false)
 const products = ref<any[]>([])
-const categories = ref<any[]>([])
+const categories = ref<any[]>([]) // 所有分类的扁平列表
+const categoryTree = ref<any[]>([]) // 分类树形结构
+const categoryPath = ref<number[]>([]) // 当前选中的分类路径
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加商品')
 const formRef = ref<FormInstance>()
@@ -260,9 +266,20 @@ const loadProducts = async () => {
   }
 }
 
+// 级联选择器配置
+const cascaderProps = {
+  value: 'id',
+  label: 'categoryName',
+  children: 'children',
+  checkStrictly: true, // 允许选择任意一级
+  emitPath: false // 只返回选中节点的值，不返回路径数组
+}
+
 const loadCategories = async () => {
   try {
     const res = await request.get('/product/category')
+    categoryTree.value = res.data || []
+    // 同时保存扁平列表用于查找
     categories.value = flattenCategories(res.data || [])
   } catch (error) {
     console.error('加载分类失败', error)
@@ -273,7 +290,7 @@ const flattenCategories = (tree: any[]): any[] => {
   const result: any[] = []
   const flatten = (nodes: any[]) => {
     nodes.forEach(node => {
-      result.push({ id: node.id, categoryName: node.categoryName })
+      result.push({ id: node.id, categoryName: node.categoryName, level: node.level, parentId: node.parentId })
       if (node.children && node.children.length > 0) {
         flatten(node.children)
       }
@@ -281,6 +298,34 @@ const flattenCategories = (tree: any[]): any[] => {
   }
   flatten(tree)
   return result
+}
+
+// 处理分类选择变化
+const handleCategoryChange = (value: any) => {
+  if (Array.isArray(value)) {
+    // 如果返回的是数组，取最后一个值
+    productForm.categoryId = value[value.length - 1]
+  } else {
+    // 如果返回的是单个值
+    productForm.categoryId = value
+  }
+}
+
+// 根据分类ID获取分类路径
+const getCategoryPath = (categoryId: number | null): number[] => {
+  if (!categoryId) return []
+  
+  const path: number[] = []
+  let currentId: number | null = categoryId
+  
+  while (currentId) {
+    const category = categories.value.find(cat => cat.id === currentId)
+    if (!category) break
+    path.unshift(currentId)
+    currentId = category.parentId
+  }
+  
+  return path
 }
 
 const resetSearch = () => {
@@ -298,8 +343,15 @@ const showAddDialog = () => {
 
 const showEditDialog = async (row: any) => {
   dialogTitle.value = '编辑商品'
+  await loadProductDetail(row.id)
+  // 设置分类路径
+  categoryPath.value = getCategoryPath(productForm.categoryId)
+  dialogVisible.value = true
+}
+
+const loadProductDetail = async (id: number) => {
   try {
-    const res = await request.get(`/merchant/product/${row.id}`)
+    const res = await request.get(`/merchant/product/${id}`)
     Object.assign(productForm, res.data)
     // 解析副图列表
     if (res.data.subImages) {
@@ -309,7 +361,7 @@ const showEditDialog = async (row: any) => {
     }
     // 加载SKU列表
     try {
-      const skuRes = await request.get(`/merchant/product/${row.id}/skus`)
+      const skuRes = await request.get(`/merchant/product/${id}/skus`)
       productForm.skus = skuRes.data || []
     } catch (error) {
       console.error('加载SKU失败', error)
@@ -319,7 +371,6 @@ const showEditDialog = async (row: any) => {
     console.error('加载商品详情失败', error)
     ElMessage.error('加载商品详情失败')
   }
-  dialogVisible.value = true
 }
 
 const resetForm = () => {
@@ -337,6 +388,7 @@ const resetForm = () => {
   productForm.virtualSales = 0
   productForm.skus = []
   subImagesList.value = []
+  categoryPath.value = [] // 清空分类路径
   formRef.value?.clearValidate()
 }
 

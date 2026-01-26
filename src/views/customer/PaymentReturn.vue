@@ -74,6 +74,8 @@ const checkPaymentStatus = async () => {
     if (res.code === 200) {
       const status = res.data
       if (status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED') {
+        // 支付成功，同步订单状态
+        await syncPaymentStatus()
         paymentSuccess.value = true
         // 获取订单ID
         await getOrderId()
@@ -90,6 +92,16 @@ const checkPaymentStatus = async () => {
     errorMessage.value = error.message || '查询支付状态失败'
   } finally {
     loading.value = false
+  }
+}
+
+const syncPaymentStatus = async () => {
+  try {
+    await request.post('/payment/alipay/sync', null, {
+      params: { orderSn: orderSn.value }
+    })
+  } catch (error) {
+    console.error('同步支付状态失败', error)
   }
 }
 

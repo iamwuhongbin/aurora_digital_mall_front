@@ -27,6 +27,10 @@
           <el-icon><User /></el-icon>
           <span>用户管理</span>
         </el-menu-item>
+        <el-menu-item index="/admin/merchant-chat">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>联系商家</span>
+        </el-menu-item>
         <el-menu-item index="/admin/profile">
           <el-icon><UserFilled /></el-icon>
           <span>个人中心</span>
@@ -64,7 +68,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { DataAnalysis, Shop, Goods, User, UserFilled, Picture } from '@element-plus/icons-vue'
+import { DataAnalysis, Shop, Goods, User, UserFilled, Picture, ChatDotRound } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()

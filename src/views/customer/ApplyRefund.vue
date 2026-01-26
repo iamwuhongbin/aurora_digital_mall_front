@@ -137,7 +137,7 @@ const getOrderStatusText = (status: number) => {
     3: '待收货',
     4: '已完成',
     5: '已取消',
-    6: '已关闭',
+    6: '退款中',
     7: '已退款'
   }
   return statusMap[status] || '未知状态'

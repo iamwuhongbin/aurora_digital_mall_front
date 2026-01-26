@@ -42,7 +42,7 @@
             {{ formatTime(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180">
+        <el-table-column label="操作" width="220">
           <template #default="{ row }">
             <el-button size="small" @click="viewDetail(row.id)">查看详情</el-button>
             <el-button 
@@ -52,6 +52,14 @@
               @click="showShipDialog(row)"
             >
               发货
+            </el-button>
+            <el-button 
+              v-if="row.orderStatus === 6" 
+              size="small" 
+              type="warning" 
+              @click="goToRefund(row.orderSn)"
+            >
+              处理退款
             </el-button>
           </template>
         </el-table-column>
@@ -211,6 +219,30 @@ const handleTabChange = () => {
 
 const viewDetail = (id: number) => {
   router.push(`/merchant/order/${id}`)
+}
+
+const goToRefund = async (orderSn: string) => {
+  try {
+    // 根据订单号查询退款申请
+    const res = await request.get('/merchant/refund/list', {
+      params: {
+        page: 1,
+        size: 1
+      }
+    })
+    
+    // 查找该订单的退款申请
+    const refund = res.data.list.find((r: any) => r.orderNo === orderSn)
+    
+    if (refund) {
+      // 跳转到退款详情页面
+      router.push(`/merchant/refund/${refund.id}`)
+    } else {
+      ElMessage.warning('未找到该订单的退款申请')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '查询退款申请失败')
+  }
 }
 
 const showShipDialog = (order: any) => {

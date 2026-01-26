@@ -165,6 +165,11 @@ const routes: RouteRecordRaw[] = [
         path: 'profile',
         name: 'MerchantProfile',
         component: () => import('@/views/merchant/Profile.vue')
+      },
+      {
+        path: 'admin-chat',
+        name: 'MerchantAdminChat',
+        component: () => import('@/views/merchant/AdminChat.vue')
       }
     ]
   },
@@ -211,6 +216,11 @@ const routes: RouteRecordRaw[] = [
         path: 'profile',
         name: 'AdminProfile',
         component: () => import('@/views/admin/Profile.vue')
+      },
+      {
+        path: 'merchant-chat',
+        name: 'AdminMerchantChat',
+        component: () => import('@/views/admin/MerchantChat.vue')
       }
     ]
   },

@@ -46,7 +46,23 @@
           </div>
           <div class="recommend-product-info">
             <h3>{{ product.productName }}</h3>
-            <p class="recommend-product-price">¥{{ product.salePrice }}</p>
+            <div class="recommend-product-rating" v-if="product.averageRating">
+              <el-rate 
+                :model-value="product.averageRating" 
+                disabled 
+                show-score 
+                text-color="#ff9900"
+                score-template="{value}"
+                size="small"
+              />
+              <span class="rating-count">({{ product.ratingCount || 0 }})</span>
+            </div>
+            <div class="recommend-product-price-box">
+              <span class="recommend-product-price">¥{{ product.salePrice }}</span>
+              <span class="recommend-product-original-price" v-if="product.originalPrice && product.originalPrice > product.salePrice">
+                ¥{{ product.originalPrice }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -81,9 +97,25 @@
           </div>
           <div class="category-product-info">
             <h3>{{ product.productName }}</h3>
+            <div class="category-product-rating" v-if="product.averageRating">
+              <el-rate 
+                :model-value="product.averageRating" 
+                disabled 
+                show-score 
+                text-color="#ff9900"
+                score-template="{value}"
+                size="small"
+              />
+              <span class="rating-count">({{ product.ratingCount || 0 }})</span>
+            </div>
             <div class="category-product-meta">
-              <span class="category-product-price">¥{{ product.salePrice }}</span>
-              <span class="category-product-sales">已售{{ (product.actualSales || 0) + (product.virtualSales || 0) }}</span>
+              <div class="category-product-price-box">
+                <span class="category-product-price">¥{{ product.salePrice }}</span>
+                <span class="category-product-original-price" v-if="product.originalPrice && product.originalPrice > product.salePrice">
+                  ¥{{ product.originalPrice }}
+                </span>
+              </div>
+              <span class="category-product-sales">已售{{ product.salesVolume || 0 }}</span>
             </div>
           </div>
         </div>
@@ -416,10 +448,40 @@ const goToCustomerService = () => {
   white-space: nowrap;
 }
 
+.recommend-product-rating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.recommend-product-rating .el-rate {
+  height: 16px;
+}
+
+.recommend-product-rating .rating-count {
+  font-size: 12px;
+  color: #909399;
+}
+
+.recommend-product-price-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 .recommend-product-price {
   font-size: 18px;
   font-weight: bold;
   color: #f56c6c;
+}
+
+.recommend-product-original-price {
+  font-size: 14px;
+  color: #909399;
+  text-decoration: line-through;
 }
 
 /* 分类商品展示 */
@@ -510,16 +572,45 @@ const goToCustomerService = () => {
   white-space: nowrap;
 }
 
+.category-product-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.category-product-rating .el-rate {
+  height: 16px;
+}
+
+.category-product-rating .rating-count {
+  font-size: 12px;
+  color: #909399;
+}
+
 .category-product-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.category-product-price-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .category-product-price {
   font-size: 18px;
   font-weight: bold;
   color: #f56c6c;
+}
+
+.category-product-original-price {
+  font-size: 12px;
+  color: #909399;
+  text-decoration: line-through;
 }
 
 .category-product-sales {
