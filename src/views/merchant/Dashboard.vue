@@ -205,11 +205,14 @@ const updateOrderChart = (data: any) => {
   if (!orderChart) return
   
   const chartData = [
-    { value: data.pending || 0, name: '待处理' },
-    { value: data.processing || 0, name: '处理中' },
-    { value: data.shipped || 0, name: '已发货' },
-    { value: data.completed || 0, name: '已完成' },
-    { value: data.cancelled || 0, name: '已取消' }
+    { value: data['待付款'] || 0, name: '待付款' },
+    { value: data['待发货'] || 0, name: '待发货' },
+    { value: data['待收货'] || 0, name: '待收货' },
+    { value: data['待评价'] || 0, name: '待评价' },
+    { value: data['已完成'] || 0, name: '已完成' },
+    { value: data['退款中'] || 0, name: '退款中' },
+    { value: data['已退款'] || 0, name: '已退款' },
+    { value: data['已取消'] || 0, name: '已取消' }
   ]
   
   orderChart.setOption({

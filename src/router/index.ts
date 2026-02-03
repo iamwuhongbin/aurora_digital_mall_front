@@ -137,6 +137,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/merchant/OrderDetail.vue')
       },
       {
+        path: 'customers',
+        name: 'MerchantCustomers',
+        component: () => import('@/views/merchant/CustomerManagement.vue')
+      },
+      {
         path: 'reviews',
         name: 'MerchantReviews',
         component: () => import('@/views/merchant/Reviews.vue')

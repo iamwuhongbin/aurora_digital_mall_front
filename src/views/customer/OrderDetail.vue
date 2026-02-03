@@ -15,7 +15,12 @@
           </el-icon>
           <div class="status-text">
             <h3>{{ order.orderStatusText }}</h3>
-            <p v-if="order.orderStatus === 1">请尽快完成支付</p>
+            <p v-if="order.orderStatus === 1 && countdown > 0">
+              请在 <span class="countdown">{{ formatCountdown(countdown) }}</span> 内完成支付，超时订单将自动取消
+            </p>
+            <p v-else-if="order.orderStatus === 1 && countdown <= 0" style="color: #f56c6c">
+              订单已超时，即将自动取消
+            </p>
             <p v-else-if="order.orderStatus === 2">商家正在准备发货</p>
             <p v-else-if="order.orderStatus === 3">商品正在配送中</p>
           </div>
@@ -257,7 +262,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, Box, Van, CircleCheck, CircleClose, Plus } from '@element-plus/icons-vue'
@@ -272,6 +277,8 @@ const order = ref<any>({
 })
 const logistics = ref<any>(null)
 const mapRef = ref<any>(null)
+const countdown = ref(0)
+let countdownTimer: any = null
 
 const showReview = ref(false)
 const reviewForms = ref<any>({})
@@ -300,6 +307,11 @@ const loadOrderDetail = async () => {
           isAnonymous: false
         }
       })
+    }
+    
+    // 如果是待付款订单且有超时时间，启动倒计时
+    if (order.value.orderStatus === 1 && order.value.expireTime) {
+      startCountdown()
     }
 
     // 如果订单已发货，加载物流信息
@@ -518,8 +530,64 @@ const submitReviews = async () => {
   }
 }
 
+// 启动倒计时
+const startCountdown = () => {
+  // 清除之前的定时器
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
+  
+  // 计算剩余秒数
+  // 处理后端返回的日期格式，可能是 "2024-01-26T15:30:00" 或 "2024-01-26 15:30:00"
+  let expireTimeStr = order.value.expireTime
+  if (typeof expireTimeStr === 'string') {
+    // 将空格替换为T，确保日期格式正确
+    expireTimeStr = expireTimeStr.replace(' ', 'T')
+  }
+  
+  const expireTime = new Date(expireTimeStr).getTime()
+  const now = new Date().getTime()
+  countdown.value = Math.floor((expireTime - now) / 1000)
+  
+  console.log('订单超时时间:', expireTimeStr)
+  console.log('当前时间:', new Date().toISOString())
+  console.log('剩余秒数:', countdown.value)
+  
+  if (countdown.value <= 0) {
+    countdown.value = 0
+    return
+  }
+  
+  // 每秒更新倒计时
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      countdown.value = 0
+      clearInterval(countdownTimer)
+      // 倒计时结束，刷新订单状态
+      setTimeout(() => {
+        loadOrderDetail()
+      }, 2000)
+    }
+  }, 1000)
+}
+
+// 格式化倒计时显示
+const formatCountdown = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${minutes}分${secs}秒`
+}
+
 onMounted(() => {
   loadOrderDetail()
+})
+
+onUnmounted(() => {
+  // 组件卸载时清除定时器
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
 })
 </script>
 
@@ -567,6 +635,13 @@ onMounted(() => {
   align-items: center;
   gap: 20px;
   padding: 20px;
+}
+
+.countdown {
+  color: #ffd04b;
+  font-weight: bold;
+  font-size: 18px;
+  padding: 0 5px;
 }
 
 .status-text h3 {

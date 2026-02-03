@@ -612,9 +612,11 @@ const submitOrder = async () => {
     }
     
     const res = await request.post('/order/create', orderRequest)
+    const orderId = res.data  // 后端返回的 data 字段直接就是 orderId
 
-    ElMessage.success('订单创建成功')
-    router.push(`/customer/orders`)
+    ElMessage.success('订单创建成功，请尽快完成支付')
+    // 跳转到订单详情页，用户可以在那里进行支付
+    router.push(`/customer/order/${orderId}`)
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error(error.message || '订单创建失败')

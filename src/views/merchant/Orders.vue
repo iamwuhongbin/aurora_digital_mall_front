@@ -5,9 +5,14 @@
     <el-card>
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <el-tab-pane label="全部" name="0" />
+        <el-tab-pane label="待付款" name="1" />
         <el-tab-pane label="待发货" name="2" />
         <el-tab-pane label="待收货" name="3" />
+        <el-tab-pane label="待评价" name="4" />
         <el-tab-pane label="已完成" name="5" />
+        <el-tab-pane label="已取消" name="6" />
+        <el-tab-pane label="退款中" name="7" />
+        <el-tab-pane label="已退款" name="8" />
       </el-tabs>
       
       <el-table :data="orders" v-loading="loading" style="width: 100%">
@@ -145,8 +150,8 @@
       </el-form>
       
       <template #footer>
-        <el-button @click="showShip = false">取消</el-button>
-        <el-button type="primary" @click="submitShip">确认发货</el-button>
+        <el-button @click="showShip = false" :disabled="shipping">取消</el-button>
+        <el-button type="primary" @click="submitShip" :loading="shipping">确认发货</el-button>
       </template>
     </el-dialog>
   </div>
@@ -168,6 +173,7 @@ const size = ref(10)
 const total = ref(0)
 
 const showShip = ref(false)
+const shipping = ref(false)
 const currentOrder = ref<any>(null)
 const companies = ref<any[]>([])
 const regionOptions = ref<any[]>([])
@@ -320,19 +326,19 @@ const submitShip = async () => {
     return
   }
   
-  if (!shipForm.value.senderRegion || shipForm.value.senderRegion.length === 0) {
-    ElMessage.warning('请选择发件地区')
+  if (!shipForm.value.senderName || !shipForm.value.senderPhone || !shipForm.value.senderAddress) {
+    ElMessage.warning('请填写完整的发货信息')
     return
   }
   
-  if (!shipForm.value.senderDetailAddress) {
-    ElMessage.warning('请填写详细地址')
+  // 验证手机号格式
+  const phoneReg = /^1[3-9]\d{9}$/
+  if (!phoneReg.test(shipForm.value.senderPhone)) {
+    ElMessage.warning('请输入正确的手机号')
     return
   }
   
-  // 组合完整地址
-  shipForm.value.senderAddress = shipForm.value.senderRegion.join('') + shipForm.value.senderDetailAddress
-  
+  shipping.value = true
   try {
     await request.post(`/merchant/order/${currentOrder.value.id}/ship`, shipForm.value)
     ElMessage.success('发货成功')
@@ -355,6 +361,8 @@ const submitShip = async () => {
     loadOrders()
   } catch (error: any) {
     ElMessage.error(error.message || '发货失败')
+  } finally {
+    shipping.value = false
   }
 }
 

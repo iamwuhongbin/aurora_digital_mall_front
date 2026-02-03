@@ -18,6 +18,14 @@
             <p v-if="order.orderStatus === 2">请尽快为客户发货</p>
             <p v-else-if="order.orderStatus === 3">商品运输中，请关注物流信息</p>
             <p v-else-if="order.orderStatus === 6">客户已申请退款，请及时处理</p>
+            <p v-else-if="order.orderStatus === 7">退款处理中，请耐心等待</p>
+            <p v-else-if="order.orderStatus === 8">退款已完成</p>
+          </div>
+          <!-- 退款提示和跳转按钮 -->
+          <div v-if="order.refundId && [6, 7, 8].includes(order.orderStatus)" style="margin-top: 15px">
+            <el-button type="primary" @click="goToRefund" size="small">
+              查看退款详情
+            </el-button>
           </div>
         </div>
       </el-card>
@@ -133,6 +141,67 @@
             </template>
           </el-table-column>
         </el-table>
+      </el-card>
+      
+      <!-- 退款信息 -->
+      <el-card v-if="order.refundId" class="section-card">
+        <template #header>
+          <div class="card-header">
+            <el-icon><Money /></el-icon>
+            <span>退款信息</span>
+          </div>
+        </template>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="退款单号">{{ order.refundNo }}</el-descriptions-item>
+          <el-descriptions-item label="退款状态">
+            <el-tag :type="getRefundStatusType(order.refundStatus)">
+              {{ order.refundStatusText }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="退款类型">
+            {{ order.refundType === 1 ? '仅退款' : '退货退款' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="退款金额">
+            <span style="color: #ff6700; font-weight: bold">¥{{ order.refundAmount }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="退款原因" :span="2">
+            {{ order.refundReason }}
+          </el-descriptions-item>
+          <el-descriptions-item label="退款说明" :span="2" v-if="order.refundDescription">
+            {{ order.refundDescription }}
+          </el-descriptions-item>
+          <el-descriptions-item label="申请时间">
+            {{ formatTime(order.refundApplyTime) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="审核时间" v-if="order.refundApproveTime">
+            {{ formatTime(order.refundApproveTime) }}
+          </el-descriptions-item>
+          
+          <!-- 退货物流信息 -->
+          <template v-if="order.refundType === 2 && order.returnLogisticsNo">
+            <el-descriptions-item label="退货物流公司">
+              {{ order.returnLogisticsCompany }}
+            </el-descriptions-item>
+            <el-descriptions-item label="退货物流单号">
+              <el-text copyable>{{ order.returnLogisticsNo }}</el-text>
+            </el-descriptions-item>
+            <el-descriptions-item label="退货时间" v-if="order.refundReturnTime">
+              {{ formatTime(order.refundReturnTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="收货时间" v-if="order.refundReceiveTime">
+              {{ formatTime(order.refundReceiveTime) }}
+            </el-descriptions-item>
+          </template>
+          
+          <el-descriptions-item label="退款完成时间" v-if="order.refundTime" :span="2">
+            {{ formatTime(order.refundTime) }}
+          </el-descriptions-item>
+        </el-descriptions>
+        
+        <!-- 退款操作按钮 -->
+        <div style="margin-top: 20px; text-align: right" v-if="order.refundStatus === 1 || order.refundStatus === 4">
+          <el-button type="primary" @click="goToRefund">处理退款</el-button>
+        </div>
       </el-card>
       
       <!-- 订单信息 -->
@@ -274,7 +343,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Loading, Location, Van, Box, Document, Clock, CircleCheck, CircleClose, Warning } from '@element-plus/icons-vue'
+import { Loading, Location, Van, Box, Document, Clock, CircleCheck, CircleClose, Warning, Money } from '@element-plus/icons-vue'
 import AmapContainer from '@/components/AmapContainer.vue'
 import request from '@/utils/request'
 import { regionData } from '@/utils/regionData'
@@ -473,10 +542,27 @@ const getStatusColor = (status: number) => {
     case 4:
     case 5: return '#67c23a'
     case 6: return '#e6a23c'
-    case 7: return '#67c23a'
-    case 8: return '#f56c6c'
+    case 7: return '#e6a23c'
+    case 8: return '#67c23a'
     default: return '#909399'
   }
+}
+
+const getRefundStatusType = (status: number) => {
+  switch (status) {
+    case 1: return 'warning'
+    case 2: return 'success'
+    case 3: return 'danger'
+    case 4: return 'primary'
+    case 5: return 'warning'
+    case 6: return 'success'
+    case 7: return 'danger'
+    default: return 'info'
+  }
+}
+
+const goToRefund = () => {
+  router.push(`/merchant/refund/${order.value.refundId}`)
 }
 
 const getLogisticsStatusType = (status: number) => {

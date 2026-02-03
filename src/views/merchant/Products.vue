@@ -4,7 +4,12 @@
       <template #header>
         <div class="card-header">
           <span>商品管理</span>
-          <el-button type="primary" @click="showAddDialog">添加商品</el-button>
+          <div>
+            <el-button @click="syncProductSales" :loading="syncing" style="margin-right: 10px">
+              同步销量数据
+            </el-button>
+            <el-button type="primary" @click="showAddDialog">添加商品</el-button>
+          </div>
         </div>
       </template>
 
@@ -51,11 +56,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="stock" label="库存" width="100" />
-        <el-table-column label="销量" width="100">
-          <template #default="{ row }">
-            {{ row.salesVolume + (row.virtualSales || 0) }}
-          </template>
-        </el-table-column>
+        <el-table-column prop="salesVolume" label="销量" width="100" />
         <el-table-column label="审核状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getAuditType(row.auditStatus)">
@@ -173,9 +174,6 @@
         <el-form-item label="库存" prop="stock">
           <el-input-number v-model="productForm.stock" :min="0" />
         </el-form-item>
-        <el-form-item label="虚拟销量">
-          <el-input-number v-model="productForm.virtualSales" :min="0" />
-        </el-form-item>
         <el-form-item label="商品详情">
           <el-input v-model="productForm.detailHtml" type="textarea" :rows="6" placeholder="请输入商品详情HTML" />
         </el-form-item>
@@ -192,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -201,6 +199,7 @@ import SkuManager from '@/components/SkuManager.vue'
 
 const loading = ref(false)
 const saving = ref(false)
+const syncing = ref(false)
 const products = ref<any[]>([])
 const categories = ref<any[]>([]) // 所有分类的扁平列表
 const categoryTree = ref<any[]>([]) // 分类树形结构
@@ -233,7 +232,6 @@ const productForm = reactive({
   originalPrice: 0,
   salePrice: 0,
   stock: 0,
-  virtualSales: 0,
   skus: [] as any[]
 })
 
@@ -288,11 +286,16 @@ const loadCategories = async () => {
 
 const flattenCategories = (tree: any[]): any[] => {
   const result: any[] = []
-  const flatten = (nodes: any[]) => {
+  const flatten = (nodes: any[], parentId: number | null = null) => {
     nodes.forEach(node => {
-      result.push({ id: node.id, categoryName: node.categoryName, level: node.level, parentId: node.parentId })
+      result.push({ 
+        id: node.id, 
+        categoryName: node.categoryName, 
+        level: node.level, 
+        parentId: node.parentId !== undefined ? node.parentId : parentId 
+      })
       if (node.children && node.children.length > 0) {
-        flatten(node.children)
+        flatten(node.children, node.id)
       }
     })
   }
@@ -344,7 +347,8 @@ const showAddDialog = () => {
 const showEditDialog = async (row: any) => {
   dialogTitle.value = '编辑商品'
   await loadProductDetail(row.id)
-  // 设置分类路径
+  // 设置分类路径 - 使用 nextTick 确保数据更新后再设置
+  await nextTick()
   categoryPath.value = getCategoryPath(productForm.categoryId)
   dialogVisible.value = true
 }
@@ -385,7 +389,6 @@ const resetForm = () => {
   productForm.originalPrice = 0
   productForm.salePrice = 0
   productForm.stock = 0
-  productForm.virtualSales = 0
   productForm.skus = []
   subImagesList.value = []
   categoryPath.value = [] // 清空分类路径
@@ -506,6 +509,20 @@ const deleteProduct = async (id: number) => {
       console.error('删除失败', error)
       ElMessage.error('删除失败')
     }
+  }
+}
+
+const syncProductSales = async () => {
+  syncing.value = true
+  try {
+    const res = await request.post('/admin/data-sync/sync-product-sales')
+    ElMessage.success(res.data || '销量数据同步成功')
+    await loadProducts()
+  } catch (error) {
+    console.error('同步销量数据失败', error)
+    ElMessage.error('同步销量数据失败')
+  } finally {
+    syncing.value = false
   }
 }
 

@@ -21,6 +21,28 @@
         </div>
       </el-card>
 
+      <!-- 商品信息 -->
+      <el-card class="section-card" v-if="refund.orderItems && refund.orderItems.length > 0">
+        <template #header>
+          <span class="card-title">商品信息</span>
+        </template>
+        <div class="order-items">
+          <div v-for="item in refund.orderItems" :key="item.productId" class="order-item">
+            <el-image 
+              :src="item.productImage" 
+              fit="cover"
+              class="product-image"
+            />
+            <div class="item-info">
+              <div class="product-name">{{ item.productName }}</div>
+              <div class="product-price">¥{{ item.productPrice }}</div>
+            </div>
+            <div class="item-quantity">x{{ item.quantity }}</div>
+            <div class="item-total">¥{{ item.totalAmount }}</div>
+          </div>
+        </div>
+      </el-card>
+
       <!-- 退款信息 -->
       <el-card class="section-card">
         <template #header>
@@ -287,7 +309,63 @@ onMounted(() => {
 }
 
 .log-remark {
+  color: #999;
+  font-size: 14px;
+}
+
+.order-items {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.product-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-name {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-price {
   color: #666;
   font-size: 14px;
+}
+
+.item-quantity {
+  color: #666;
+  font-size: 14px;
+  min-width: 60px;
+  text-align: center;
+}
+
+.item-total {
+  color: #ff6700;
+  font-size: 16px;
+  font-weight: bold;
+  min-width: 100px;
+  text-align: right;
 }
 </style>

@@ -34,17 +34,42 @@
               </el-icon>
             </div>
             
-            <!-- 子分类 -->
+            <!-- 二级分类 -->
             <transition name="slide-fade">
               <div v-if="parent.children && parent.children.length > 0 && expandedCategories.includes(parent.id)" class="children-list">
                 <div 
                   v-for="child in parent.children" 
                   :key="child.id"
-                  class="category-item child-item"
-                  :class="{ active: selectedCategoryId === child.id }"
-                  @click="selectCategory(child.id)"
+                  class="child-section"
                 >
-                  <span class="category-name">{{ child.categoryName }}</span>
+                  <div
+                    class="category-item child-item"
+                    :class="{ active: selectedCategoryId === child.id, expanded: expandedCategories.includes(child.id) }"
+                  >
+                    <span class="category-name" @click="selectCategory(child.id)">{{ child.categoryName }}</span>
+                    <el-icon 
+                      v-if="child.children && child.children.length > 0" 
+                      class="arrow-icon"
+                      @click.stop="toggleCategory(child.id)"
+                    >
+                      <ArrowRight />
+                    </el-icon>
+                  </div>
+                  
+                  <!-- 三级分类 -->
+                  <transition name="slide-fade">
+                    <div v-if="child.children && child.children.length > 0 && expandedCategories.includes(child.id)" class="grandchildren-list">
+                      <div 
+                        v-for="grandchild in child.children" 
+                        :key="grandchild.id"
+                        class="category-item grandchild-item"
+                        :class="{ active: selectedCategoryId === grandchild.id }"
+                        @click="selectCategory(grandchild.id)"
+                      >
+                        <span class="category-name">{{ grandchild.categoryName }}</span>
+                      </div>
+                    </div>
+                  </transition>
                 </div>
               </div>
             </transition>
@@ -270,6 +295,8 @@ const toggleCategory = (categoryId: number) => {
   } else {
     expandedCategories.value.push(categoryId)
   }
+  // 保存展开状态到 sessionStorage
+  sessionStorage.setItem('expandedCategories', JSON.stringify(expandedCategories.value))
 }
 
 const selectCategory = (categoryId: number | null) => {
@@ -364,6 +391,17 @@ const clearMerchantFilter = () => {
 
 onMounted(async () => {
   await loadCategories()
+  
+  // 从 sessionStorage 恢复展开状态
+  const savedExpanded = sessionStorage.getItem('expandedCategories')
+  if (savedExpanded) {
+    try {
+      expandedCategories.value = JSON.parse(savedExpanded)
+    } catch (error) {
+      console.error('恢复展开状态失败', error)
+    }
+  }
+  
   await loadProducts()
   
   // 如果URL中有商家ID，加载商家信息
@@ -371,12 +409,24 @@ onMounted(async () => {
     await loadMerchantInfo(Number(route.query.merchantId))
   }
   
-  // 如果URL中有分类ID，自动展开对应的父分类
+  // 如果URL中有分类ID，自动展开对应的父分类和祖父分类
   if (route.query.categoryId) {
     const categoryId = Number(route.query.categoryId)
     const category = categories.value.find(cat => cat.id === categoryId)
-    if (category && category.parentId) {
-      expandedCategories.value.push(category.parentId)
+    if (category) {
+      // 展开父分类
+      if (category.parentId && !expandedCategories.value.includes(category.parentId)) {
+        expandedCategories.value.push(category.parentId)
+      }
+      // 如果是三级分类，还需要展开祖父分类
+      if (category.parentId) {
+        const parentCategory = categories.value.find(cat => cat.id === category.parentId)
+        if (parentCategory && parentCategory.parentId && !expandedCategories.value.includes(parentCategory.parentId)) {
+          expandedCategories.value.push(parentCategory.parentId)
+        }
+      }
+      // 保存展开状态
+      sessionStorage.setItem('expandedCategories', JSON.stringify(expandedCategories.value))
     }
   }
 })
@@ -538,10 +588,38 @@ onMounted(async () => {
   color: #667eea;
 }
 
+.child-section {
+  margin-bottom: 2px;
+}
+
 .children-list {
   background: transparent;
   overflow: hidden;
   padding: 4px 0;
+}
+
+.grandchildren-list {
+  background: transparent;
+  overflow: hidden;
+  padding: 2px 0;
+}
+
+.category-item.grandchild-item {
+  padding-left: 52px;
+  font-size: 12px;
+  color: #909399;
+  margin: 2px 8px;
+}
+
+.category-item.grandchild-item:hover {
+  color: #667eea;
+  background: linear-gradient(90deg, #f5f7fa 0%, #ecf5ff 100%);
+}
+
+.category-item.grandchild-item.active {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  color: #667eea;
+  font-weight: 500;
 }
 
 /* 折叠动画 */

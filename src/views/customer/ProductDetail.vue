@@ -4,20 +4,46 @@
       <el-row :gutter="40" v-if="product.id">
         <el-col :span="10">
           <div class="image-gallery">
-            <el-image 
-              :src="currentImage" 
-              class="main-image"
-              fit="cover"
-              :preview-src-list="imageList"
-            />
-            <div class="thumbnail-list" v-if="imageList.length > 1">
+            <div 
+              class="image-zoom-container"
+              @mouseenter="showZoom = true"
+              @mouseleave="showZoom = false"
+              @mousemove="handleMouseMove"
+              @click="showZoom = false"
+            >
               <el-image 
-                v-for="(img, index) in imageList" 
+                :src="currentImage" 
+                class="main-image"
+                fit="cover"
+                :preview-src-list="imageList"
+                ref="mainImageRef"
+              />
+              <!-- 放大镜遮罩 -->
+              <div 
+                v-show="showZoom" 
+                class="zoom-mask"
+                :style="maskStyle"
+              ></div>
+            </div>
+            <!-- 放大后的图片显示区域 -->
+            <div 
+              v-show="showZoom" 
+              class="zoom-viewer"
+            >
+              <img 
+                :src="currentImage" 
+                class="zoom-image"
+                :style="zoomImageStyle"
+              />
+            </div>
+            <div class="thumbnail-list" v-if="thumbnailList.length > 1">
+              <el-image 
+                v-for="(item, index) in thumbnailList" 
                 :key="index"
-                :src="img" 
+                :src="item.image" 
                 class="thumbnail"
-                :class="{ active: currentImage === img }"
-                @click="currentImage = img"
+                :class="{ active: currentImage === item.image }"
+                @click="handleThumbnailClick(item)"
                 fit="cover"
               />
             </div>
@@ -248,6 +274,10 @@ const quantity = ref(1)
 const currentImage = ref('')
 const isFavorite = ref(false)
 const favoriteLoading = ref(false)
+const mainImageRef = ref()
+const showZoom = ref(false)
+const maskStyle = ref({})
+const zoomImageStyle = ref({})
 
 // 评价相关
 const activeTab = ref('detail')
@@ -265,16 +295,79 @@ const reviewStats = ref({
   rating1: 0
 })
 
+// 图片预览列表（用于点击图片打开预览）
 const imageList = computed(() => {
   const images = []
-  if (product.value.mainImage) {
-    images.push(product.value.mainImage)
+  
+  // 如果选中了 SKU 且 SKU 有图片，优先显示 SKU 图片
+  if (selectedSku.value?.skuImage) {
+    images.push(selectedSku.value.skuImage)
   }
+  
+  // 添加商品主图
+  if (product.value.mainImage) {
+    // 避免重复添加（如果 SKU 图片和主图相同）
+    if (!images.includes(product.value.mainImage)) {
+      images.push(product.value.mainImage)
+    }
+  }
+  
+  // 添加商品副图
   if (product.value.subImages && typeof product.value.subImages === 'string') {
     const subImages = product.value.subImages.split(',').filter((url: string) => url.trim())
-    images.push(...subImages)
+    subImages.forEach(img => {
+      if (!images.includes(img)) {
+        images.push(img)
+      }
+    })
   }
+  
   return images
+})
+
+// 缩略图列表（包含 SKU 信息）
+const thumbnailList = computed(() => {
+  const thumbnails: Array<{image: string, sku?: any, type: string}> = []
+  const addedImages = new Set<string>()
+  
+  // 1. 添加所有 SKU 的图片
+  if (skus.value && skus.value.length > 0) {
+    skus.value.forEach(sku => {
+      if (sku.skuImage && !addedImages.has(sku.skuImage)) {
+        thumbnails.push({
+          image: sku.skuImage,
+          sku: sku,
+          type: 'sku'
+        })
+        addedImages.add(sku.skuImage)
+      }
+    })
+  }
+  
+  // 2. 添加商品主图（如果还没添加）
+  if (product.value.mainImage && !addedImages.has(product.value.mainImage)) {
+    thumbnails.push({
+      image: product.value.mainImage,
+      type: 'main'
+    })
+    addedImages.add(product.value.mainImage)
+  }
+  
+  // 3. 添加商品副图
+  if (product.value.subImages && typeof product.value.subImages === 'string') {
+    const subImages = product.value.subImages.split(',').filter((url: string) => url.trim())
+    subImages.forEach(img => {
+      if (!addedImages.has(img)) {
+        thumbnails.push({
+          image: img,
+          type: 'sub'
+        })
+        addedImages.add(img)
+      }
+    })
+  }
+  
+  return thumbnails
 })
 
 const loadProduct = async () => {
@@ -290,7 +383,7 @@ const loadProduct = async () => {
       const skuRes = await request.get(`/product/${productId}/skus`)
       skus.value = skuRes.data || []
       if (skus.value.length > 0) {
-        selectedSku.value = skus.value[0]
+        selectSku(skus.value[0])
       }
     } catch (error) {
       console.error('加载SKU失败', error)
@@ -550,6 +643,54 @@ const formatTime = (time: string) => {
   return new Date(time).toLocaleString('zh-CN')
 }
 
+// 处理缩略图点击
+const handleThumbnailClick = (item: any) => {
+  currentImage.value = item.image
+  
+  // 如果点击的是 SKU 图片，自动选中该 SKU
+  if (item.type === 'sku' && item.sku) {
+    selectSku(item.sku)
+  }
+}
+
+// 处理鼠标移动事件 - 图片放大镜
+const handleMouseMove = (e: MouseEvent) => {
+  const container = e.currentTarget as HTMLElement
+  const rect = container.getBoundingClientRect()
+  
+  // 计算鼠标在容器中的位置
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  
+  // 遮罩大小
+  const maskSize = 150
+  const zoomScale = 2.5 // 放大倍数
+  
+  // 计算遮罩位置（确保不超出边界）
+  let maskX = x - maskSize / 2
+  let maskY = y - maskSize / 2
+  
+  maskX = Math.max(0, Math.min(maskX, rect.width - maskSize))
+  maskY = Math.max(0, Math.min(maskY, rect.height - maskSize))
+  
+  // 设置遮罩样式
+  maskStyle.value = {
+    left: `${maskX}px`,
+    top: `${maskY}px`,
+    width: `${maskSize}px`,
+    height: `${maskSize}px`
+  }
+  
+  // 计算放大图片的位置
+  const percentX = (maskX + maskSize / 2) / rect.width
+  const percentY = (maskY + maskSize / 2) / rect.height
+  
+  zoomImageStyle.value = {
+    transform: `scale(${zoomScale})`,
+    transformOrigin: `${percentX * 100}% ${percentY * 100}%`
+  }
+}
+
 onMounted(() => {
   loadProduct()
   checkFavorite()
@@ -569,11 +710,47 @@ onMounted(() => {
   top: 20px;
 }
 
+.image-zoom-container {
+  position: relative;
+  cursor: crosshair;
+  overflow: hidden;
+}
+
 .main-image {
   width: 100%;
   height: 450px;
   border-radius: 8px;
   margin-bottom: 10px;
+  display: block;
+}
+
+.zoom-mask {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid #409eff;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.zoom-viewer {
+  position: absolute;
+  right: -420px;
+  top: 0;
+  width: 400px;
+  height: 450px;
+  border: 2px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.zoom-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 0.1s ease-out;
 }
 
 .thumbnail-list {

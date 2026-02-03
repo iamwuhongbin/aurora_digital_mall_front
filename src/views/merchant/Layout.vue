@@ -19,6 +19,10 @@
           <el-icon><ShoppingCart /></el-icon>
           <span>订单管理</span>
         </el-menu-item>
+        <el-menu-item index="/merchant/customers">
+          <el-icon><User /></el-icon>
+          <span>客户管理</span>
+        </el-menu-item>
         <el-menu-item index="/merchant/reviews">
           <el-icon><ChatDotRound /></el-icon>
           <span>评价管理</span>
@@ -66,7 +70,11 @@
       </el-header>
       
       <el-main class="main">
-        <router-view />
+        <router-view v-slot="{ Component, route }">
+          <transition name="fade-slide" mode="out-in">
+            <component :is="Component" :key="route.path" />
+          </transition>
+        </router-view>
       </el-main>
     </el-container>
   </el-container>
@@ -76,7 +84,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { DataAnalysis, Goods, ShoppingCart, ChatDotRound, ChatLineSquare, Ticket, UserFilled, Menu, Wallet, Service } from '@element-plus/icons-vue'
+import { DataAnalysis, Goods, ShoppingCart, ChatDotRound, ChatLineSquare, Ticket, UserFilled, Menu, Wallet, Service, User } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -179,5 +187,21 @@ const handleLogout = () => {
 .main {
   background: #f0f2f5;
   padding: 20px;
+}
+
+/* 页面切换过渡动画 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
 }
 </style>
